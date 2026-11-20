@@ -33,6 +33,8 @@ def _public_json(url: str):
         with urllib.request.urlopen(request, timeout=12) as response:
             if response.status != 200:
                 raise Hold("HUB_METADATA_HTTP_NOT_OK")
+            if re.search(r'rel\s*=\s*"?next"?', response.headers.get("Link", ""), re.I):
+                raise Hold("HUB_METADATA_PAGINATION_UNVERIFIED")
             payload = response.read(MAX_JSON + 1)
     except Hold:
         raise
