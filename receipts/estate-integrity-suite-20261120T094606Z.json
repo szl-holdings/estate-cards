@@ -1,0 +1,344 @@
+{
+ "class": "MEASURED",
+ "utc_start": "2026-11-20T09:33:00Z",
+ "utc_end": "2026-11-20T09:46:06Z",
+ "subject": "offline fail-closed estate integrity suite (25 checks) + trio pairing receipts",
+ "runner": "Sovereign runtime python",
+ "driver": "kimi-k3.1-pro:cloud (4 author rounds + final ship reviews round5/round5b)",
+ "cleaner": "agent (edits _cleaner_edits.py x2 restores, _cleaner_edits2.py P1/P2/P3 application)",
+ "tester": "mistral-large-4:cloud (mutation plan + efficiency review, TESTER_APPROVE contingent)",
+ "chatgpt6_rail": "not consulted - occupied by sibling estate lanes (no-stomp doctrine), honest receipt",
+ "mutation_run_pre_patch": {
+  "class": "MEASURED",
+  "utc_start": "2026-11-20T09:38:02Z",
+  "runner": "C:\\Users\\steph\\AppData\\Local\\SZL\\Sovereign\\runtime\\python.exe",
+  "note": "Mistral plan A executed mechanically; fresh sandbox per mutation; real repo untouched",
+  "sha256_real_repo": {
+   "tools/test_estate_integrity.py": "232426aa6e8d00bce814740c98807d923f0b864009e612d7700ff84319e1ab1c",
+   "tools/pr1055_watch.py": "9abfa577d1351817c5b4773bc229e514455dcf6a6c64288d48d65cc7453d160b",
+   "data/rollout_receipts.jsonl": "0332ab72cce3732976ea85d2850769710b43204b2a5848c0affc1da4ad5c9455",
+   "data/queue.jsonl": "636090e67c5253a832b26e0cf51ad2948d223d497b095d6351185b4a9ba98085"
+  },
+  "baseline": {
+   "result": "PASS",
+   "pass": 25,
+   "fail": 0,
+   "failed_labels": [],
+   "fail_msgs": [],
+   "exit": 0
+  },
+  "mutations": [
+   {
+    "mutation": "m01",
+    "mistral_expected": "R-JSON +1 (record actual: reader may skip blanks)",
+    "result": "PASS",
+    "pass": 25,
+    "fail": 0,
+    "delta": 0,
+    "verdict": "BLIND_SPOT_DELTA_0",
+    "failed_labels": []
+   },
+   {
+    "mutation": "m02",
+    "mistral_expected": "R-JSON +1",
+    "result": "FAIL",
+    "pass": 12,
+    "fail": 13,
+    "delta": 13,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "1.01",
+     "1.02",
+     "1.03",
+     "1.04",
+     "1.05",
+     "1.06",
+     "1.07",
+     "1.08",
+     "1.09",
+     "1.10",
+     "1.11",
+     "3.01",
+     "3.02"
+    ]
+   },
+   {
+    "mutation": "m03",
+    "mistral_expected": "R-OK +1",
+    "result": "FAIL",
+    "pass": 24,
+    "fail": 1,
+    "delta": 1,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "1.03"
+    ]
+   },
+   {
+    "mutation": "m04",
+    "mistral_expected": "R-STATUS +1",
+    "result": "FAIL",
+    "pass": 24,
+    "fail": 1,
+    "delta": 1,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "1.03"
+    ]
+   },
+   {
+    "mutation": "m05",
+    "mistral_expected": "R-KEYS +1",
+    "result": "FAIL",
+    "pass": 23,
+    "fail": 2,
+    "delta": 2,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "1.04",
+     "1.05"
+    ]
+   },
+   {
+    "mutation": "m06",
+    "mistral_expected": "R-KINDS +1 (maybe K-REPO)",
+    "result": "FAIL",
+    "pass": 23,
+    "fail": 2,
+    "delta": 2,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "1.07",
+     "3.02"
+    ]
+   },
+   {
+    "mutation": "m07",
+    "mistral_expected": "R-TSMONO +1",
+    "result": "FAIL",
+    "pass": 24,
+    "fail": 1,
+    "delta": 1,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "1.10"
+    ]
+   },
+   {
+    "mutation": "m08",
+    "mistral_expected": "R-TSFIRST +1 (R-TSMONO unlikely)",
+    "result": "FAIL",
+    "pass": 24,
+    "fail": 1,
+    "delta": 1,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "1.11"
+    ]
+   },
+   {
+    "mutation": "m09",
+    "mistral_expected": "Q-PURPOSE +1",
+    "result": "FAIL",
+    "pass": 23,
+    "fail": 2,
+    "delta": 2,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "2.02",
+     "2.03"
+    ]
+   },
+   {
+    "mutation": "m10",
+    "mistral_expected": "Q-SHAPES +1",
+    "result": "PASS",
+    "pass": 25,
+    "fail": 0,
+    "delta": 0,
+    "verdict": "BLIND_SPOT_DELTA_0",
+    "failed_labels": []
+   },
+   {
+    "mutation": "m11",
+    "mistral_expected": "Q-UNIQUE Q-DUPS X-EQ (delta +3)",
+    "result": "FAIL",
+    "pass": 21,
+    "fail": 4,
+    "delta": 4,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "2.05",
+     "2.06",
+     "3.01",
+     "3.02"
+    ]
+   },
+   {
+    "mutation": "m12",
+    "mistral_expected": "X-EQ K-REPO (delta +1..2)",
+    "result": "FAIL",
+    "pass": 23,
+    "fail": 2,
+    "delta": 2,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "3.01",
+     "3.02"
+    ]
+   },
+   {
+    "mutation": "m13",
+    "mistral_expected": "W-CLEAN +1 (W-TRACK/W-COMPILE/W-MARK stay green)",
+    "result": "PASS",
+    "pass": 25,
+    "fail": 0,
+    "delta": 0,
+    "verdict": "BLIND_SPOT_DELTA_0",
+    "failed_labels": []
+   },
+   {
+    "mutation": "m14",
+    "mistral_expected": "H-UNDER +1",
+    "result": "FAIL",
+    "pass": 24,
+    "fail": 1,
+    "delta": 1,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "5.01"
+    ]
+   },
+   {
+    "mutation": "m14b",
+    "mistral_expected": "NEGATIVE CONTROL delta=0 PASS",
+    "result": "PASS",
+    "pass": 25,
+    "fail": 0,
+    "delta": 0,
+    "verdict": "NEGATIVE_CTRL_OK",
+    "failed_labels": []
+   }
+  ],
+  "utc_end": "2026-11-20T09:38:26Z"
+ },
+ "mutation_recheck_post_patch": {
+  "class": "MEASURED",
+  "utc_start": "2026-11-20T09:45:18Z",
+  "note": "post-patch recheck of blind spots m01/m10/m13 + negative control, per Kimi round 5/5b receipts",
+  "baseline": {
+   "result": "PASS",
+   "pass": 25,
+   "fail": 0,
+   "failed_labels": [],
+   "fail_msgs": [],
+   "exit": 0
+  },
+  "mutations": [
+   {
+    "mutation": "m01",
+    "result": "FAIL",
+    "pass": 12,
+    "fail": 13,
+    "delta": 13,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "1.01",
+     "1.02",
+     "1.03",
+     "1.04",
+     "1.05",
+     "1.06",
+     "1.07",
+     "1.08",
+     "1.09",
+     "1.10",
+     "1.11",
+     "3.01",
+     "3.02"
+    ]
+   },
+   {
+    "mutation": "m10",
+    "result": "FAIL",
+    "pass": 24,
+    "fail": 1,
+    "delta": 1,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "2.02"
+    ]
+   },
+   {
+    "mutation": "m13",
+    "result": "FAIL",
+    "pass": 24,
+    "fail": 1,
+    "delta": 1,
+    "verdict": "CAUGHT",
+    "failed_labels": [
+     "4.04"
+    ]
+   },
+   {
+    "mutation": "m14b",
+    "result": "PASS",
+    "pass": 25,
+    "fail": 0,
+    "delta": 0,
+    "verdict": "NEGATIVE_CTRL_OK",
+    "failed_labels": []
+   }
+  ],
+  "utc_end": "2026-11-20T09:45:22Z"
+ },
+ "cleaner_edits2_log": {
+  "class": "MEASURED",
+  "utc": "2026-11-20T09:44:46Z",
+  "agent": "cleaner_edits2",
+  "edits": [
+   {
+    "name": "P1_m01_blank_lines",
+    "count": 1,
+    "old_chars": 57,
+    "new_chars": 101
+   },
+   {
+    "name": "P2_m10_exact_shapes",
+    "count": 1,
+    "old_chars": 74,
+    "new_chars": 150
+   },
+   {
+    "name": "P3_m13_git_literal",
+    "count": 1,
+    "old_chars": 21,
+    "new_chars": 34
+   }
+  ],
+  "suite_result_line": [
+   "RESULT=PASS pass=25 fail=0"
+  ],
+  "suite_exit": 0
+ },
+ "kimi_round5_verdict": "SHIP_APPROVE__with_patches (P1 blank-line reject; P2 exact queue shapes; P3 amended in round 5b)",
+ "kimi_round5b_verdict": "SHIP_APPROVE__with_patches (P2-prime set(row) membership; P3-prime OPT-A quoted-git literal; subprocess ban withdrawn after measured fact watcher legitimately uses subprocess for GET-only gh)",
+ "kimi_required_receipts_reproduced": {
+  "m01": "CAUGHT delta=13",
+  "m10": "CAUGHT delta=1 label=2.02",
+  "m13": "CAUGHT delta=1 label=4.04 only",
+  "m14b": "NEGATIVE_CTRL_OK delta=0",
+  "baseline_real_and_sandbox": "PASS 25/0 exit 0"
+ },
+ "mistral_efficiency_review_vs_actual": {
+  "opt2_hoist_ts_regex": "ALREADY_SATISFIED (TS_RE module scope line 33)",
+  "opt4_py_compile_temp_cfile": "ALREADY_SATISFIED (4.02 tempfile target)",
+  "opt3_git_lsfiles_consolidation": "DECLINED_BY_CLEANER_ACCEPTED_BY_DRIVER (n=650 one-shot offline)"
+ },
+ "sha256_final": {
+  "tools/test_estate_integrity.py": "53d22f4abc7a1bf8385db4c2a9be5926ed76ff44917a789fc38a13a1c3fabdb9",
+  "tools/pr1055_watch.py": "9abfa577d1351817c5b4773bc229e514455dcf6a6c64288d48d65cc7453d160b",
+  "data/rollout_receipts.jsonl": "0332ab72cce3732976ea85d2850769710b43204b2a5848c0affc1da4ad5c9455",
+  "data/queue.jsonl": "636090e67c5253a832b26e0cf51ad2948d223d497b095d6351185b4a9ba98085"
+ }
+}
