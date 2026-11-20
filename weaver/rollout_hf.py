@@ -22,7 +22,13 @@ Q = os.path.join(ROOT, 'queue.jsonl')
 RCPT = os.path.join(ROOT, 'rollout_receipts.jsonl')
 STATE = os.path.join(ROOT, 'rollout_state.json')
 STOP = os.path.join(ROOT, 'STOP')
-TOKEN = open('C:/Users/steph/.cache/huggingface/token', encoding='utf-8').read().strip()
+def _publisher_token():
+    # Explicit owner-supplied credential only; never scrape a workstation token file.
+    token = os.environ.get("SZL_HF_CARD_PUBLISH_TOKEN", "").strip()
+    if not token:
+        raise RuntimeError("EXPLICIT_CARD_PUBLISH_TOKEN_REQUIRED")
+    return token
+
 COMMIT_EP = 'https://huggingface.co/api/datasets/%s/commit/main'
 
 
@@ -36,7 +42,16 @@ def log(rec):
         f.write(json.dumps(rec, ensure_ascii=False) + chr(10))
 
 
-def ndjson_commit(repo_id, kind, files):
+def ndjson_commit(repo_id, kind, files, *, approved=False):
+    # A Space README may be listed in SOURCE.json. Editing it outside the canonical
+    # GitHub -> HF source publisher can make the running container fail at import.
+    if kind == "space":
+        return 403, "SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED"
+    if kind not in ("model", "dataset"):
+        return 403, "INVALID_REPOSITORY_KIND"
+    if not approved:
+        return 403, "EXPLICIT_OWNER_CARD_ADMISSION_REQUIRED"
+
     base_ep = 'https://huggingface.co/api/%s/%s/commit/main' % (
         {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}[kind], repo_id)
     nd = json.dumps({'key': 'header', 'value': {'summary': 'SZL estate showcase card (weaver v0.1.0, deterministic SVG charts)',
@@ -48,7 +63,7 @@ def ndjson_commit(repo_id, kind, files):
     for attempt in range(6):
         try:
             req = urllib.request.Request(base_ep, data=body, method='POST',
-                                         headers={'Authorization': 'Bearer ' + TOKEN,
+                                         headers={'Authorization': 'Bearer ' + _publisher_token(),
                                                   'Content-Type': 'application/x-ndjson'})
             with urllib.request.urlopen(req, timeout=180) as r:
                 return r.status, r.read().decode('utf-8')[:300]
@@ -71,11 +86,17 @@ def load_state():
     return {'done': []}
 
 
-def main():
+def main(argv=None):
+    args = sys.argv[1:] if argv is None else list(argv)
+    if args not in ([], ["--apply"]):
+        raise ValueError("USAGE: rollout_hf.py [--apply] (spaces always owner-published)")
+    apply = args == ["--apply"]
+
     if not os.path.exists(Q):
         print('NO_QUEUE', flush=True)
         return
-    audit = json.load(open(os.path.join(ROOT, 'data', 'audit-latest.json'), encoding='utf-8'))
+    with open(os.path.join(ROOT, 'data', 'audit-latest.json'), encoding='utf-8') as audit_file:
+        audit = json.load(audit_file)
     st = load_state()
     done = set(st['done'])
     with open(Q, encoding='utf-8') as f:
@@ -84,24 +105,50 @@ def main():
     for item in items:
         if os.path.exists(STOP):
             print('STOP_FILE', flush=True); break
-        repo = item['repo']; kind = item['kind']
+        repo = item.get('repo'); kind = item.get('kind')
+        # No auto-approval from an estate-wide instruction or a queue row.
+        # Source-owned Spaces MUST publish cards through their authorized GitHub
+        # manifests and maintenance-window workflow, never a parallel Hub writer.
+        if not isinstance(repo, str) or not repo.startswith('SZLHOLDINGS/') or (
+                len(repo) > 128 or not all(c.isalnum() or c in '-_/' for c in repo)):
+            log({'repo': str(repo)[:128], 'kind': kind, 'decision': 'INVALID_REPOSITORY', 'ok': False})
+            continue
+        if kind == 'space':
+            log({'repo': repo, 'kind': kind, 'decision': 'SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED', 'ok': False})
+            print('SKIP_SOURCE_OWNED_SPACE', repo, flush=True)
+            continue
+        if kind not in ('model', 'dataset'):
+            log({'repo': repo, 'kind': kind, 'decision': 'INVALID_REPOSITORY_KIND', 'ok': False})
+            continue
         if repo in done:
             continue
+        if not apply:
+            log({'repo': repo, 'kind': kind, 'decision': 'DRY_RUN_REVIEW_REQUIRED', 'ok': False})
+            continue
+        if not os.environ.get('SZL_HF_CARD_PUBLISH_TOKEN', '').strip():
+            log({'repo': repo, 'kind': kind, 'decision': 'EXPLICIT_CARD_PUBLISH_TOKEN_REQUIRED', 'ok': False})
+            print('HOLD_NO_EXPLICIT_PUBLISH_TOKEN', flush=True)
+            break
         try:
             cur = cardbox.fetch_readme(repo, kind)
+            # A 429/403/timeout is indistinguishable from absent README in the
+            # legacy reader. Never compose over unknown existing model metadata.
+            if cur is None:
+                raise RuntimeError('README_READ_UNAVAILABLE_FAIL_CLOSED')
             content, assets, mode = cardbox.build_card(kind, repo, audit, cur,
                                                         item.get('purpose'), item.get('meta_extra'))
             files = [('README.md', content)]
             for aname, svg in assets.items():
                 files.append(('assets/szl-card/' + aname, svg))
-            status, detail = ndjson_commit(repo, kind, files)
+            status, detail = ndjson_commit(repo, kind, files, approved=apply)
             ok = status == 200
             log({'repo': repo, 'kind': kind, 'mode': mode, 'commit_status': status,
                  'ok': ok, 'detail': detail[:160] if not ok else ''})
             print('ROLL', repo, mode, status, flush=True)
             if ok:
                 done.add(repo)
-                json.dump({'done': sorted(done)}, open(STATE, 'w', encoding='utf-8'))
+                with open(STATE, 'w', encoding='utf-8') as state_file:
+                    json.dump({'done': sorted(done)}, state_file)
             time.sleep(14)
         except Exception as e:
             log({'repo': repo, 'ok': False, 'err': repr(e)[:300]})

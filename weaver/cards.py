@@ -16,8 +16,12 @@ from weaver import charts
 from weaver import policy
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TOKEN = open('C:/Users/steph/.cache/huggingface/token', encoding='utf-8').read().strip()
-H = {'Authorization': 'Bearer ' + TOKEN}
+def _read_headers():
+    # Do not load local credential files at import time or copy credentials into cards.
+    # Anonymous reads are enough for public, non-source-sealed model/dataset cards.
+    token = os.environ.get("SZL_HF_CARD_READ_TOKEN", "").strip()
+    return {"Authorization": "Bearer " + token} if token else {}
+
 CARD_MARK = '<!-- szl:showcase-card v1'
 
 
@@ -28,7 +32,7 @@ def now():
 def fetch_readme(repo_id, repo_type):
     base = {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}[repo_type]
     url = 'https://huggingface.co/%s/%s/raw/main/README.md' % (base, repo_id)
-    req = urllib.request.Request(url, headers=H)
+    req = urllib.request.Request(url, headers=_read_headers())
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             return r.read().decode('utf-8')
@@ -88,7 +92,7 @@ def model_card(repo_id, audit, meta_extra=None):
     body.append('')
     body.append('- **Repo:** [%s](https://huggingface.co/%s)' % (repo_id, repo_id))
     body.append('- **Canonical source:** [%s](%s)' % (src.split('/')[-1] if '/szl-holdings/' in src else 'szl-holdings org', src))
-    body.append('- **Kind:** %s (trained artifact in the governed factory)' % kind)
+    body.append('- **Kind:** model repository; weight and evaluation qualification NOT VERIFIED by this card')
     if meta_extra:
         for k, v in meta_extra.items():
             body.append('- **%s:** %s' % (k, v))
@@ -154,9 +158,15 @@ def build_card(kind, repo_id, audit, current_readme, purpose=None, meta_extra=No
         # strip the duplicated top title from the appended copy
         return out, assets, 'append'
     if current_readme and CARD_MARK in current_readme:
-        # replace previous showcase section between markers
-        pre = current_readme.split(CARD_MARK)[0].rstrip()
-        return pre + '\n\n---\n\n## SZL estate showcase card\n\n' + fresh + '\n' + footer, assets, 'replace-marked'
+        # Replace exactly one managed section. Never accumulate duplicates or
+        # erase unmarked authored material under an unexpected marker shape.
+        heading = '\n\n---\n\n## SZL estate showcase card\n\n'
+        if current_readme.count(heading) != 1 or current_readme.count(CARD_MARK) != 1:
+            raise ValueError('SOURCE_CARD_SECTION_UNBOUND')
+        if current_readme.index(heading) > current_readme.index(CARD_MARK):
+            raise ValueError('SOURCE_CARD_SECTION_UNBOUND')
+        pre = current_readme.split(heading, 1)[0].rstrip()
+        return pre + '\n' + heading + fresh + '\n' + footer, assets, 'replace-marked'
     # no real README: compose fresh (preserve YAML front-matter if any)
     fm = ''
     if current_readme and current_readme.lstrip().startswith('---'):
