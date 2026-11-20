@@ -10,19 +10,30 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import os
+import re
 import time
 import urllib.request
 import urllib.error
 import datetime
 
 from weaver import cards as cardbox
+from weaver.source_guard import Hold as SourceGuardHold, check as source_preflight
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 Q = os.path.join(ROOT, 'queue.jsonl')
 RCPT = os.path.join(ROOT, 'rollout_receipts.jsonl')
 STATE = os.path.join(ROOT, 'rollout_state.json')
 STOP = os.path.join(ROOT, 'STOP')
-TOKEN = open('C:/Users/steph/.cache/huggingface/token', encoding='utf-8').read().strip()
+def _write_token():
+    # Never read a publisher credential until the public source guard admits a write.
+    try:
+        with open('C:/Users/steph/.cache/huggingface/token', encoding='utf-8') as stream:
+            token = stream.read().strip()
+    except OSError:
+        raise SourceGuardHold('HUB_WRITE_CREDENTIAL_UNAVAILABLE') from None
+    if not token:
+        raise SourceGuardHold('HUB_WRITE_CREDENTIAL_UNAVAILABLE')
+    return token
 COMMIT_EP = 'https://huggingface.co/api/datasets/%s/commit/main'
 
 
@@ -36,11 +47,15 @@ def log(rec):
         f.write(json.dumps(rec, ensure_ascii=False) + chr(10))
 
 
-def ndjson_commit(repo_id, kind, files):
+def ndjson_commit(repo_id, kind, files, parent_commit):
+    if not isinstance(parent_commit, str) or not re.fullmatch(r'[0-9a-f]{40}', parent_commit):
+        raise SourceGuardHold('HUB_COMMIT_PARENT_UNAVAILABLE')
+    token = _write_token()
     base_ep = 'https://huggingface.co/api/%s/%s/commit/main' % (
         {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}[kind], repo_id)
     nd = json.dumps({'key': 'header', 'value': {'summary': 'SZL estate showcase card (weaver v0.1.0, deterministic SVG charts)',
-                                                'description': 'Source: github.com/szl-holdings/estate-cards. Receipt-honest append/refresh.'}})
+                                                'description': 'Source: github.com/szl-holdings/estate-cards. Receipt-honest append/refresh.',
+                                                'parentCommit': parent_commit}})
     for path, content in files:
         nd += chr(10) + json.dumps({'key': 'file', 'value': {'path': path, 'content': content}},
                                    ensure_ascii=False)
@@ -48,7 +63,7 @@ def ndjson_commit(repo_id, kind, files):
     for attempt in range(6):
         try:
             req = urllib.request.Request(base_ep, data=body, method='POST',
-                                         headers={'Authorization': 'Bearer ' + TOKEN,
+                                         headers={'Authorization': 'Bearer ' + token,
                                                   'Content-Type': 'application/x-ndjson'})
             with urllib.request.urlopen(req, timeout=180) as r:
                 return r.status, r.read().decode('utf-8')[:300]
@@ -67,7 +82,8 @@ def ndjson_commit(repo_id, kind, files):
 
 def load_state():
     if os.path.exists(STATE):
-        return json.load(open(STATE, encoding='utf-8'))
+        with open(STATE, encoding='utf-8') as stream:
+            return json.load(stream)
     return {'done': []}
 
 
@@ -75,7 +91,8 @@ def main():
     if not os.path.exists(Q):
         print('NO_QUEUE', flush=True)
         return
-    audit = json.load(open(os.path.join(ROOT, 'data', 'audit-latest.json'), encoding='utf-8'))
+    with open(os.path.join(ROOT, 'data', 'audit-latest.json'), encoding='utf-8') as stream:
+        audit = json.load(stream)
     st = load_state()
     done = set(st['done'])
     with open(Q, encoding='utf-8') as f:
@@ -88,21 +105,29 @@ def main():
         if repo in done:
             continue
         try:
-            cur = cardbox.fetch_readme(repo, kind)
+            # Public metadata-only owner guard; pin CAS to that exact Hub revision.
+            parent = source_preflight(repo, kind)
+            cur = cardbox.fetch_readme(repo, kind, parent_revision=parent)
             content, assets, mode = cardbox.build_card(kind, repo, audit, cur,
                                                         item.get('purpose'), item.get('meta_extra'))
             files = [('README.md', content)]
             for aname, svg in assets.items():
                 files.append(('assets/szl-card/' + aname, svg))
-            status, detail = ndjson_commit(repo, kind, files)
+            status, detail = ndjson_commit(repo, kind, files, parent)
             ok = status == 200
             log({'repo': repo, 'kind': kind, 'mode': mode, 'commit_status': status,
                  'ok': ok, 'detail': detail[:160] if not ok else ''})
             print('ROLL', repo, mode, status, flush=True)
             if ok:
                 done.add(repo)
-                json.dump({'done': sorted(done)}, open(STATE, 'w', encoding='utf-8'))
+                with open(STATE, 'w', encoding='utf-8') as stream:
+                    json.dump({'done': sorted(done)}, stream)
             time.sleep(14)
+        except SourceGuardHold as exc:
+            log({'repo': repo, 'kind': kind, 'ok': False,
+                 'admission': 'HOLD', 'reason': str(exc)})
+            print('HOLD', repo, str(exc), flush=True)
+            continue
         except Exception as e:
             log({'repo': repo, 'ok': False, 'err': repr(e)[:300]})
             print('ERR', repo, repr(e)[:150], flush=True)
