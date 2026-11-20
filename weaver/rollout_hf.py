@@ -16,6 +16,7 @@ import urllib.error
 import datetime
 
 from weaver import cards as cardbox
+from weaver import source_integrity
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 Q = os.path.join(ROOT, 'queue.jsonl')
@@ -36,33 +37,56 @@ def log(rec):
         f.write(json.dumps(rec, ensure_ascii=False) + chr(10))
 
 
-def ndjson_commit(repo_id, kind, files):
+_README_UNOBSERVED = object()
+
+
+def ndjson_commit(repo_id, kind, files, *, expected_readme=_README_UNOBSERVED):
+    # LAST-MOMENT WRITE GATE: another source-owned publisher may pin README.md.
+    # Even if the source manifest changes during this check, the immutable
+    # parentCommit plus second source read must not allow a stale overwrite.
+    wants_readme = any(name == 'README.md' for name, _ in files)
+    if wants_readme:
+        source_integrity.assert_readme_unbound(
+            repo_id, kind, headers=cardbox.H,
+        )
+    parent = source_integrity.observed_head_sha(
+        repo_id, kind, headers=cardbox.H,
+    )
+    if wants_readme:
+        if expected_readme is _README_UNOBSERVED:
+            raise source_integrity.SourceIntegrityHold('README_BASE_UNOBSERVED')
+        source_integrity.assert_readme_unbound(
+            repo_id, kind, headers=cardbox.H,
+        )
+        current = cardbox.fetch_readme(repo_id, kind)
+        if current != expected_readme:
+            raise source_integrity.SourceIntegrityHold('README_BASE_CHANGED')
     base_ep = 'https://huggingface.co/api/%s/%s/commit/main' % (
         {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}[kind], repo_id)
     nd = json.dumps({'key': 'header', 'value': {'summary': 'SZL estate showcase card (weaver v0.1.0, deterministic SVG charts)',
-                                                'description': 'Source: github.com/szl-holdings/estate-cards. Receipt-honest append/refresh.'}})
+                                                'description': 'Source: github.com/szl-holdings/estate-cards. Receipt-honest append/refresh.',
+                                                'parentCommit': parent}})
     for path, content in files:
         nd += chr(10) + json.dumps({'key': 'file', 'value': {'path': path, 'content': content}},
                                    ensure_ascii=False)
     body = nd.encode('utf-8')
-    for attempt in range(6):
-        try:
-            req = urllib.request.Request(base_ep, data=body, method='POST',
-                                         headers={'Authorization': 'Bearer ' + TOKEN,
-                                                  'Content-Type': 'application/x-ndjson'})
-            with urllib.request.urlopen(req, timeout=180) as r:
-                return r.status, r.read().decode('utf-8')[:300]
-        except urllib.error.HTTPError as e:
-            detail = e.read().decode('utf-8')[:200]
-            if e.code == 429:
-                wait = min(60 * (2 ** attempt), 1200)
-                time.sleep(wait)
-                continue
-            return e.code, detail
-        except Exception as e:
-            time.sleep(15)
-            detail = repr(e)[:200]
-    return 0, 'exhausted retries'
+    req = urllib.request.Request(
+        base_ep, data=body, method='POST',
+        headers={'Authorization': 'Bearer ' + TOKEN,
+                 'Content-Type': 'application/x-ndjson'},
+    )
+    # Exactly one attempt: an interrupted POST may already have committed.
+    # Never replay unknown outcomes or rate-limit responses under a stale
+    # parent, and never leak provider response bodies into public receipts.
+    try:
+        with urllib.request.urlopen(req, timeout=180) as r:
+            if r.status != 200:
+                return int(r.status), 'COMMIT_HTTP_NON_200'
+            return 200, 'PROVIDER_ACCEPTED_REQUIRES_SOURCE_READBACK'
+    except urllib.error.HTTPError as e:
+        return e.code, 'COMMIT_HTTP_REFUSED'
+    except Exception:
+        return 0, 'COMMIT_OUTCOME_UNKNOWN'
 
 
 def load_state():
@@ -94,7 +118,9 @@ def main():
             files = [('README.md', content)]
             for aname, svg in assets.items():
                 files.append(('assets/szl-card/' + aname, svg))
-            status, detail = ndjson_commit(repo, kind, files)
+            status, detail = ndjson_commit(
+                repo, kind, files, expected_readme=cur,
+            )
             ok = status == 200
             log({'repo': repo, 'kind': kind, 'mode': mode, 'commit_status': status,
                  'ok': ok, 'detail': detail[:160] if not ok else ''})

@@ -10,7 +10,10 @@ import hashlib
 import json
 import os
 import urllib.request
+import urllib.error
 import datetime
+
+from weaver.source_integrity import SourceIntegrityHold, _NoRedirect
 
 from weaver import charts
 from weaver import policy
@@ -29,11 +32,25 @@ def fetch_readme(repo_id, repo_type):
     base = {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}[repo_type]
     url = 'https://huggingface.co/%s/%s/raw/main/README.md' % (base, repo_id)
     req = urllib.request.Request(url, headers=H)
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), _NoRedirect(),
+    )
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:
-            return r.read().decode('utf-8')
-    except Exception:
-        return None
+        with opener.open(req, timeout=60) as r:
+            if r.status != 200:
+                raise SourceIntegrityHold('README_HTTP_UNEXPECTED')
+            body = r.read(2_000_001)
+            if len(body) > 2_000_000:
+                raise SourceIntegrityHold('README_TOO_LARGE')
+            return body.decode('utf-8')
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise SourceIntegrityHold('README_PROVIDER_UNAVAILABLE') from None
+    except (OSError, UnicodeError, ValueError) as exc:
+        if isinstance(exc, SourceIntegrityHold):
+            raise
+        raise SourceIntegrityHold('README_PROVIDER_UNAVAILABLE') from None
 
 
 def _badge(label, value, color):
