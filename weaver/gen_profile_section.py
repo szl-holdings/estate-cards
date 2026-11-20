@@ -50,8 +50,7 @@ def render(audit: dict) -> tuple[str, str]:
     summary = (
         f"<!-- szl:estate-cards:v1 generated {stamp} -->\n\n"
         "## Estate snapshot\n\n"
-        f"[Measured census, limits and graphs](ESTATE_AT_A_GLANCE.md) "
-        f"({stamp}; not training or production proof).\n\n"
+        "[Measured census and limitations](ESTATE_AT_A_GLANCE.md).\n\n"
         "<!-- /szl:estate-cards:v1 -->"
     )
     if len(summary.split()) > 35:
