@@ -9,15 +9,17 @@ Rules (estate doctrine):
 import hashlib
 import json
 import os
+import re
+import urllib.error
 import urllib.request
 import datetime
 
 from weaver import charts
 from weaver import policy
+from weaver import source_guard
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TOKEN = open('C:/Users/steph/.cache/huggingface/token', encoding='utf-8').read().strip()
-H = {'Authorization': 'Bearer ' + TOKEN}
+README_MAX_BYTES = 512_000
 CARD_MARK = '<!-- szl:showcase-card v1'
 
 
@@ -25,15 +27,37 @@ def now():
     return datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
-def fetch_readme(repo_id, repo_type):
-    base = {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}[repo_type]
-    url = 'https://huggingface.co/%s/%s/raw/main/README.md' % (base, repo_id)
-    req = urllib.request.Request(url, headers=H)
+def fetch_readme(repo_id, repo_type, *, parent_revision):
+    """Read immutable public README bytes; ambiguity is HOLD, never empty-card permission."""
+    kinds = {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}
+    if (
+        repo_type not in kinds or not isinstance(repo_id, str)
+        or not source_guard.REPO_ID.fullmatch(repo_id)
+        or not isinstance(parent_revision, str)
+        or not source_guard.SHA40.fullmatch(parent_revision)
+    ):
+        raise source_guard.Hold('README_SOURCE_IDENTITY_INVALID')
+    url = 'https://huggingface.co/%s/%s/raw/%s/README.md' % (
+        kinds[repo_type], repo_id, parent_revision
+    )
+    req = urllib.request.Request(url, headers={'User-Agent': 'SZL-card-public-readback/1'})
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:
-            return r.read().decode('utf-8')
+        with urllib.request.urlopen(req, timeout=12) as response:
+            if response.status != 200:
+                raise source_guard.Hold('README_HTTP_NOT_OK')
+            raw = response.read(README_MAX_BYTES + 1)
+    except source_guard.Hold:
+        raise
+    except urllib.error.HTTPError:
+        raise source_guard.Hold('README_HTTP_UNAVAILABLE') from None
     except Exception:
-        return None
+        raise source_guard.Hold('README_TRANSPORT_UNAVAILABLE') from None
+    if not raw or len(raw) > README_MAX_BYTES:
+        raise source_guard.Hold('README_SIZE_INVALID')
+    try:
+        return raw.decode('utf-8', 'strict')
+    except UnicodeError:
+        raise source_guard.Hold('README_NOT_UTF8') from None
 
 
 def _badge(label, value, color):
