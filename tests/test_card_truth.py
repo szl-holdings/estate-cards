@@ -135,5 +135,45 @@ class CardTruthTest(unittest.TestCase):
             )
 
 
+class CardCanonicalRoutesTest(unittest.TestCase):
+    """Live-observed route semantics, synthetic network-free request validation."""
+
+    def test_model_readme_uses_canonical_route_not_false_404_models_prefix(self):
+        called = []
+
+        def fake_open(request, timeout):
+            called.append(request.full_url)
+            return Response(b"# Existing curated model card\n")
+
+        with (
+            patch.object(cards, "_auth_headers", return_value={"Authorization": "Bearer synthetic"}),
+            patch.object(cards._READ_OPENER, "open", side_effect=fake_open),
+        ):
+            result = cards.fetch_readme("SZLHOLDINGS/SZL-Khipu-Yachay-Nano", "model")
+        self.assertEqual(result, "# Existing curated model card\n")
+        self.assertEqual(
+            called,
+            ["https://huggingface.co/SZLHOLDINGS/SZL-Khipu-Yachay-Nano/raw/main/README.md"],
+        )
+
+    def test_dataset_and_space_routes_remain_distinct(self):
+        for kind, expected in (
+            ("dataset", "https://huggingface.co/datasets/SZLHOLDINGS/example/raw/main/README.md"),
+            ("space", "https://huggingface.co/spaces/SZLHOLDINGS/example/raw/main/README.md"),
+        ):
+            called = []
+
+            def fake_open(request, timeout):
+                called.append(request.full_url)
+                return Response()
+
+            with (
+                patch.object(cards, "_auth_headers", return_value={"Authorization": "Bearer synthetic"}),
+                patch.object(cards._READ_OPENER, "open", side_effect=fake_open),
+            ):
+                self.assertTrue(cards.fetch_readme("SZLHOLDINGS/example", kind))
+            self.assertEqual(called, [expected])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -76,3 +76,23 @@ Hugging Face's [model cards](https://huggingface.co/docs/hub/model-cards),
 [SLSA provenance](https://slsa.dev/spec/v1.2/build-provenance),
 [OpenSSF Scorecard](https://scorecard.dev/), and the original Khipu
 source owner's [publish contract](https://github.com/szl-holdings/szl-khipu/blob/main/scripts/publish_proofloom.py).
+
+## Additional reproduced model-route false 404
+
+A bounded anonymous GET readback on 2026-11-20 found a second, independent
+source-card replacement defect. For the existing public model
+`SZLHOLDINGS/SZL-Khipu-Yachay-Nano`, the old
+`/models/SZLHOLDINGS/SZL-Khipu-Yachay-Nano/raw/main/README.md` path returned
+**HTTP 404**, while the canonical
+`/SZLHOLDINGS/SZL-Khipu-Yachay-Nano/raw/main/README.md` returned **HTTP 200**.
+The dataset and Space `/datasets/` and `/spaces/` prefixes remained valid.
+
+The old logic could interpret the false model 404 as an absent README and
+select destructive `compose` instead of preserving existing curated content.
+The revised model URL excludes the bogus `models/` prefix, with explicit
+no-network regression tests for all three repository types.
+
+This **does not** establish which model cards, if any, were overwritten
+historically. Any restoration requires exact prior commit, source-owner
+decision, licenses/rights check and immutable before/after receipts. Never
+blindly regenerate all 401 cards to make the estate appear green.

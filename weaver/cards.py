@@ -64,10 +64,12 @@ def fetch_readme(repo_id, repo_type):
     quota, connection, body or encoding error was mistaken for "no README".
     Source-sealed assets require an additional owner/manifest guard upstream.
     """
-    names = {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}
-    if repo_type not in names or type(repo_id) is not str or not PUBLIC_REPO.fullmatch(repo_id):
+    # Model pages are at /ORG/name, NOT /models/ORG/name: the latter returns
+    # a deceptive 404 for existing curated cards and can trigger replacement.
+    prefixes = {'model': '', 'dataset': 'datasets/', 'space': 'spaces/'}
+    if repo_type not in prefixes or type(repo_id) is not str or not PUBLIC_REPO.fullmatch(repo_id):
         raise CardReadHold("CARD_SOURCE_ID_INVALID")
-    url = 'https://huggingface.co/%s/%s/raw/main/README.md' % (names[repo_type], repo_id)
+    url = 'https://huggingface.co/' + prefixes[repo_type] + repo_id + '/raw/main/README.md'
     req = urllib.request.Request(url, headers=_auth_headers())
     try:
         with _READ_OPENER.open(req, timeout=30) as response:
