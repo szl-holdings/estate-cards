@@ -103,6 +103,7 @@ class SourceGuardTests(unittest.TestCase):
         requests = []
         class ReadmeResponse:
             status = 200
+            headers = {"Content-Type": "text/plain; charset=utf-8"}
             def __enter__(self):
                 return self
             def __exit__(self, *args):
@@ -118,6 +119,56 @@ class SourceGuardTests(unittest.TestCase):
         self.assertEqual(len(requests), 1)
         self.assertIn("/raw/" + SHA + "/README.md", requests[0].full_url)
         self.assertNotIn("authorization", dict(requests[0].header_items()))
+
+    def test_public_model_card_uses_canonical_root_url(self):
+        class ReadmeResponse:
+            status = 200
+            headers = {"Content-Type": "text/plain; charset=utf-8"}
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, count):
+                return b"# Model card"
+        requests = []
+        def fake_urlopen(request, timeout):
+            requests.append(request)
+            return ReadmeResponse()
+        with patch.object(cards.urllib.request, "urlopen", side_effect=fake_urlopen):
+            self.assertEqual(
+                cards.fetch_readme("SZLHOLDINGS/WILLAY", "model", parent_revision=SHA),
+                "# Model card",
+            )
+        self.assertEqual(
+            requests[0].full_url,
+            "https://huggingface.co/SZLHOLDINGS/WILLAY/raw/" + SHA + "/README.md",
+        )
+        self.assertNotIn("authorization", dict(requests[0].header_items()))
+
+    def test_html_200_does_not_become_curated_readme(self):
+        class HtmlResponse:
+            status = 200
+            headers = {"Content-Type": "text/html; charset=utf-8"}
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, count):
+                return b"<html>proxy error</html>"
+        with patch.object(cards.urllib.request, "urlopen", return_value=HtmlResponse()):
+            with self.assertRaisesRegex(guard.Hold, "README_NON_TEXT"):
+                cards.fetch_readme(SAFE, "space", parent_revision=SHA)
+
+    def test_rate_limit_and_upstream_http_errors_hold_without_fallback(self):
+        import urllib.error
+        for status in (401, 403, 429, 500, 503):
+            with self.subTest(http=status):
+                failure = urllib.error.HTTPError(
+                    "https://huggingface.co/", status, "fixture", {}, None
+                )
+                with patch.object(cards.urllib.request, "urlopen", side_effect=failure):
+                    with self.assertRaisesRegex(guard.Hold, "README_HTTP_UNAVAILABLE"):
+                        cards.fetch_readme(SAFE, "space", parent_revision=SHA)
 
     def test_readme_network_failure_fails_closed(self):
         with patch.object(cards.urllib.request, "urlopen", side_effect=TimeoutError("offline")):

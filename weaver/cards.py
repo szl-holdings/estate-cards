@@ -29,7 +29,9 @@ def now():
 
 def fetch_readme(repo_id, repo_type, *, parent_revision):
     """Read immutable public README bytes; ambiguity is HOLD, never empty-card permission."""
-    kinds = {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}
+    # Model repositories live at /<org>/<model>, unlike datasets and Spaces.
+    # Preserve the immutable parentCommit from the source-ownership preflight.
+    kinds = {'model': '', 'dataset': 'datasets/', 'space': 'spaces/'}
     if (
         repo_type not in kinds or not isinstance(repo_id, str)
         or not source_guard.REPO_ID.fullmatch(repo_id)
@@ -37,7 +39,7 @@ def fetch_readme(repo_id, repo_type, *, parent_revision):
         or not source_guard.SHA40.fullmatch(parent_revision)
     ):
         raise source_guard.Hold('README_SOURCE_IDENTITY_INVALID')
-    url = 'https://huggingface.co/%s/%s/raw/%s/README.md' % (
+    url = 'https://huggingface.co/%s%s/raw/%s/README.md' % (
         kinds[repo_type], repo_id, parent_revision
     )
     req = urllib.request.Request(url, headers={'User-Agent': 'SZL-card-public-readback/1'})
@@ -45,6 +47,10 @@ def fetch_readme(repo_id, repo_type, *, parent_revision):
         with urllib.request.urlopen(req, timeout=12) as response:
             if response.status != 200:
                 raise source_guard.Hold('README_HTTP_NOT_OK')
+            # A 200 HTML error page cannot become a new canonical README.
+            content_type = response.headers.get('Content-Type', '')
+            if not isinstance(content_type, str) or not content_type.lower().startswith('text/plain'):
+                raise source_guard.Hold('README_NON_TEXT')
             raw = response.read(README_MAX_BYTES + 1)
     except source_guard.Hold:
         raise
