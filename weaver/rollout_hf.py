@@ -107,7 +107,7 @@ def main():
         try:
             # Public metadata-only owner guard; pin CAS to that exact Hub revision.
             parent = source_preflight(repo, kind)
-            cur = cardbox.fetch_readme(repo, kind)
+            cur = cardbox.fetch_readme(repo, kind, parent_revision=parent)
             content, assets, mode = cardbox.build_card(kind, repo, audit, cur,
                                                         item.get('purpose'), item.get('meta_extra'))
             files = [('README.md', content)]
