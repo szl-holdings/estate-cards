@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from weaver import rollout_hf, source_guard as guard
+from weaver import cards, rollout_hf, source_guard as guard
 
 SHA = "a" * 40
 PROTECTED = "SZLHOLDINGS/khipu-proof-loom"
@@ -98,6 +98,43 @@ class SourceGuardTests(unittest.TestCase):
         self.assertEqual(observed[0].get_method(), "POST")
         header = json.loads(observed[0].data.decode().splitlines()[0])
         self.assertEqual(header["value"]["parentCommit"], SHA)
+
+    def test_public_readme_uses_immutable_revision_without_auth(self):
+        requests = []
+        class ReadmeResponse:
+            status = 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, count):
+                return b"# Public README"
+        def fake_urlopen(request, timeout):
+            requests.append(request)
+            return ReadmeResponse()
+        with patch.object(cards.urllib.request, "urlopen", side_effect=fake_urlopen):
+            observed = cards.fetch_readme(SAFE, "space", parent_revision=SHA)
+        self.assertEqual(observed, "# Public README")
+        self.assertEqual(len(requests), 1)
+        self.assertIn("/raw/" + SHA + "/README.md", requests[0].full_url)
+        self.assertNotIn("authorization", dict(requests[0].header_items()))
+
+    def test_readme_network_failure_fails_closed(self):
+        with patch.object(cards.urllib.request, "urlopen", side_effect=TimeoutError("offline")):
+            with self.assertRaisesRegex(guard.Hold, "README_TRANSPORT_UNAVAILABLE"):
+                cards.fetch_readme(SAFE, "space", parent_revision=SHA)
+
+    def test_readme_missing_fails_closed_instead_of_overwriting(self):
+        import urllib.error
+        missing = urllib.error.HTTPError("https://example.invalid", 404, "missing", {}, None)
+        with patch.object(cards.urllib.request, "urlopen", side_effect=missing):
+            with self.assertRaisesRegex(guard.Hold, "README_HTTP_UNAVAILABLE"):
+                cards.fetch_readme(SAFE, "space", parent_revision=SHA)
+
+    def test_bad_readme_revision_never_attempts_network(self):
+        with patch.object(cards.urllib.request, "urlopen", side_effect=AssertionError("network")):
+            with self.assertRaisesRegex(guard.Hold, "README_SOURCE_IDENTITY_INVALID"):
+                cards.fetch_readme(SAFE, "space", parent_revision="main")
 
     def test_bad_parent_never_reads_token_or_posts(self):
         with patch.object(rollout_hf, "_write_token", side_effect=AssertionError("secret")), \
