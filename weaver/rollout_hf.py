@@ -1,7 +1,7 @@
 """Paced HF card roller: queue-driven, resumable, receipted, fail-closed.
 
 - queue file: queue.jsonl  lines {kind, repo, purpose?, meta_extra?}
-- 14s+ between commits (stays under the measured ~320/h org quota), 429 backoff
+- 14s+ between commits; ambiguous provider writes NEVER auto-retried
 - receipts: rollout_receipts.jsonl (one line per attempted repo)
 - STOP file halts; done-set resumes cleanly
 """
@@ -17,7 +17,7 @@ import urllib.error
 import datetime
 
 from weaver import cards as cardbox
-from weaver.source_guard import Hold as SourceGuardHold, check as source_preflight
+from weaver.source_guard import Hold as SourceGuardHold, REPO_ID as HUB_REPO_ID, check as source_preflight
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 Q = os.path.join(ROOT, 'queue.jsonl')
@@ -48,6 +48,11 @@ def log(rec):
 
 
 def ndjson_commit(repo_id, kind, files, parent_commit):
+    # A portfolio/card writer never owns executable Space source files.
+    if kind == 'space':
+        raise SourceGuardHold('SPACE_CANONICAL_PUBLISHER_REQUIRED')
+    if kind not in ('model', 'dataset') or not isinstance(repo_id, str) or not HUB_REPO_ID.fullmatch(repo_id):
+        raise SourceGuardHold('HUB_REPOSITORY_IDENTITY_INVALID')
     if not isinstance(parent_commit, str) or not re.fullmatch(r'[0-9a-f]{40}', parent_commit):
         raise SourceGuardHold('HUB_COMMIT_PARENT_UNAVAILABLE')
     token = _write_token()
@@ -60,24 +65,19 @@ def ndjson_commit(repo_id, kind, files, parent_commit):
         nd += chr(10) + json.dumps({'key': 'file', 'value': {'path': path, 'content': content}},
                                    ensure_ascii=False)
     body = nd.encode('utf-8')
-    for attempt in range(6):
-        try:
-            req = urllib.request.Request(base_ep, data=body, method='POST',
-                                         headers={'Authorization': 'Bearer ' + token,
-                                                  'Content-Type': 'application/x-ndjson'})
-            with urllib.request.urlopen(req, timeout=180) as r:
-                return r.status, r.read().decode('utf-8')[:300]
-        except urllib.error.HTTPError as e:
-            detail = e.read().decode('utf-8')[:200]
-            if e.code == 429:
-                wait = min(60 * (2 ** attempt), 1200)
-                time.sleep(wait)
-                continue
-            return e.code, detail
-        except Exception as e:
-            time.sleep(15)
-            detail = repr(e)[:200]
-    return 0, 'exhausted retries'
+    # A transport failure may follow a committed provider mutation. Do not
+    # retry a POST whose outcome cannot be independently reconciled.
+    try:
+        req = urllib.request.Request(base_ep, data=body, method='POST',
+                                     headers={'Authorization': 'Bearer ' + token,
+                                              'Content-Type': 'application/x-ndjson'})
+        with urllib.request.urlopen(req, timeout=180) as r:
+            return r.status, r.read().decode('utf-8')[:300]
+    except urllib.error.HTTPError as exc:
+        # Including 429: no verified no-commit readback exists here.
+        return exc.code, 'HTTP_PROVIDER_REFUSAL_NO_AUTOMATIC_RESEND'
+    except Exception:
+        return 0, 'PROVIDER_OUTCOME_UNKNOWN_NO_AUTOMATIC_RESEND'
 
 
 def load_state():
@@ -105,6 +105,9 @@ def main():
         if repo in done:
             continue
         try:
+            # Before *any* card fetch, do not touch another Space's runnable code.
+            if kind == 'space':
+                raise SourceGuardHold('SPACE_CANONICAL_PUBLISHER_REQUIRED')
             # Public metadata-only owner guard; pin CAS to that exact Hub revision.
             parent = source_preflight(repo, kind)
             cur = cardbox.fetch_readme(repo, kind, parent_revision=parent)
