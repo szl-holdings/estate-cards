@@ -1,0 +1,193 @@
+[
+ {
+  "repo": "SZLHOLDINGS/salad-ring-v1",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:30Z",
+  "readme_len": 0,
+  "tree_files": 2,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-ring-v1/settin"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-ring-v1b",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:30Z",
+  "readme_len": 0,
+  "tree_files": 145,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-ring-v1b/setti"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-ring-serve-gemma1",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:31Z",
+  "readme_len": 0,
+  "tree_files": 2,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-ring-serve-gem"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-ring-serve-llama1",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:31Z",
+  "readme_len": 0,
+  "tree_files": 71,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-ring-serve-lla"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-ring-serve-mistral1",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:31Z",
+  "readme_len": 0,
+  "tree_files": 131,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-ring-serve-mis"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-flagship55-v1",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:32Z",
+  "readme_len": 0,
+  "tree_files": 534,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-flagship55-v1/"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l12",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:32Z",
+  "readme_len": 0,
+  "tree_files": 2,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-ring-ouro-l12/"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l13",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:32Z",
+  "readme_len": 0,
+  "tree_files": 2,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-ring-ouro-l13/"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l15",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:32Z",
+  "readme_len": 0,
+  "tree_files": 2,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-ring-ouro-l15/"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l16",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:33Z",
+  "readme_len": 0,
+  "tree_files": 2,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-ring-ouro-l16/"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l17",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:33Z",
+  "readme_len": 0,
+  "tree_files": 2,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-ring-ouro-l17/"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l18",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:33Z",
+  "readme_len": 0,
+  "tree_files": 2,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-ring-ouro-l18/"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/salad-governed-distill-27b-qlora-r1",
+  "kind": "model",
+  "ts": "2026-11-20T03:49:34Z",
+  "readme_len": 0,
+  "tree_files": 57,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/models/SZLHOLDINGS/salad-governed-disti"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/szl-agentic-reflex-v1",
+  "kind": "dataset",
+  "ts": "2026-11-20T03:49:34Z",
+  "readme_len": 0,
+  "tree_files": 31,
+  "scan_hits": [],
+  "flip": {
+   "result": "HTTP404",
+   "detail": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/datasets/SZLHOLDINGS/szl-agentic-reflex"
+  },
+  "now_private": true
+ },
+ {
+  "repo": "SZLHOLDINGS/a11oy-state",
+  "kind": "dataset",
+  "ts": "2026-11-20T03:49:34Z",
+  "readme_len": 2559,
+  "tree_files": 5,
+  "scan_hits": [],
+  "action": "HELD (listed)"
+ }
+]

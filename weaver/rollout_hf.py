@@ -5,6 +5,9 @@
 - receipts: rollout_receipts.jsonl (one line per attempted repo)
 - STOP file halts; done-set resumes cleanly
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import os
 import time
