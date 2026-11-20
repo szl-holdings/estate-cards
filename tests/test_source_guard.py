@@ -76,6 +76,15 @@ class SourceGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(guard.Hold, "UNAVAILABLE"):
             guard.check(SAFE, "space", fetch=lambda url: 1/0)
 
+    def test_paginated_tree_refuses_missing_manifest_in_first_page(self):
+        class PaginatedResponse(Response):
+            headers = {"Link": '<https://huggingface.co/api/spaces/x/tree/main?cursor=next>; rel="next"'}
+            def read(self, count):
+                return b'[{"path":"README.md"}]'
+        with patch.object(guard.urllib.request, "urlopen", return_value=PaginatedResponse()):
+            with self.assertRaisesRegex(guard.Hold, "PAGINATION_UNVERIFIED"):
+                guard._public_json("https://huggingface.co/api/spaces/SZLHOLDINGS/x/tree/main")
+
     def test_ndjson_has_exact_parent_commit(self):
         observed = []
         def urlopen(request, timeout):
