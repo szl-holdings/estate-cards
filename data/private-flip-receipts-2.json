@@ -1,0 +1,95 @@
+{
+ "flips": [
+  {
+   "repo": "SZLHOLDINGS/salad-ring-v1",
+   "already_public": true,
+   "ts": "2026-11-20T03:50:16Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-ring-v1b",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:16Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-ring-serve-gemma1",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:17Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-ring-serve-llama1",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:17Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-ring-serve-mistral1",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:17Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-flagship55-v1",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:18Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-ring-ouro-l12",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:18Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-ring-ouro-l13",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:19Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-ring-ouro-l15",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:19Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-ring-ouro-l16",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:19Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-ring-ouro-l17",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:20Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-ring-ouro-l18",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:20Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/salad-governed-distill-27b-qlora-r1",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:20Z"
+  },
+  {
+   "repo": "SZLHOLDINGS/szl-agentic-reflex-v1",
+   "status": 200,
+   "now_private": false,
+   "ts": "2026-11-20T03:50:21Z"
+  }
+ ],
+ "held": [
+  {
+   "repo": "SZLHOLDINGS/a11oy-state",
+   "held": "recommendation: governance state",
+   "ts": "2026-11-20T03:50:21Z"
+  }
+ ],
+ "done": "2026-11-20T03:50:21Z"
+}

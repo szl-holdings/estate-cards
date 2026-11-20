@@ -1,0 +1,62 @@
+[
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-ring-v1"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-ring-v1b"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-ring-serve-gemma1"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-ring-serve-llama1"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-ring-serve-mistral1"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-flagship55-v1"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l12"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l13"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l15"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l16"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l17"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-ring-ouro-l18"
+ },
+ {
+  "kind": "model",
+  "repo": "SZLHOLDINGS/salad-governed-distill-27b-qlora-r1"
+ },
+ {
+  "kind": "dataset",
+  "repo": "SZLHOLDINGS/a11oy-state"
+ },
+ {
+  "kind": "dataset",
+  "repo": "SZLHOLDINGS/szl-agentic-reflex-v1"
+ }
+]
