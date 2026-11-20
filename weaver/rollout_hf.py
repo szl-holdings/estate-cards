@@ -82,7 +82,8 @@ def ndjson_commit(repo_id, kind, files, parent_commit):
 
 def load_state():
     if os.path.exists(STATE):
-        return json.load(open(STATE, encoding='utf-8'))
+        with open(STATE, encoding='utf-8') as stream:
+            return json.load(stream)
     return {'done': []}
 
 
@@ -90,7 +91,8 @@ def main():
     if not os.path.exists(Q):
         print('NO_QUEUE', flush=True)
         return
-    audit = json.load(open(os.path.join(ROOT, 'data', 'audit-latest.json'), encoding='utf-8'))
+    with open(os.path.join(ROOT, 'data', 'audit-latest.json'), encoding='utf-8') as stream:
+        audit = json.load(stream)
     st = load_state()
     done = set(st['done'])
     with open(Q, encoding='utf-8') as f:
@@ -118,7 +120,8 @@ def main():
             print('ROLL', repo, mode, status, flush=True)
             if ok:
                 done.add(repo)
-                json.dump({'done': sorted(done)}, open(STATE, 'w', encoding='utf-8'))
+                with open(STATE, 'w', encoding='utf-8') as stream:
+                    json.dump({'done': sorted(done)}, stream)
             time.sleep(14)
         except SourceGuardHold as exc:
             log({'repo': repo, 'kind': kind, 'ok': False,
