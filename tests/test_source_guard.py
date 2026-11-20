@@ -92,7 +92,7 @@ class SourceGuardTests(unittest.TestCase):
             return Response()
         with patch.object(rollout_hf, "_write_token", return_value="TEST_FIXTURE_ONLY"), \
              patch.object(rollout_hf.urllib.request, "urlopen", side_effect=urlopen):
-            code, _ = rollout_hf.ndjson_commit(SAFE, "space", [("README.md", "fixture")], SHA)
+            code, _ = rollout_hf.ndjson_commit(SAFE, "model", [("README.md", "fixture")], SHA)
         self.assertEqual(code, 200)
         self.assertEqual(len(observed), 1)
         self.assertEqual(observed[0].get_method(), "POST")
@@ -191,7 +191,7 @@ class SourceGuardTests(unittest.TestCase):
         with patch.object(rollout_hf, "_write_token", side_effect=AssertionError("secret")), \
              patch.object(rollout_hf.urllib.request, "urlopen", side_effect=AssertionError("network")):
             with self.assertRaisesRegex(guard.Hold, "PARENT_UNAVAILABLE"):
-                rollout_hf.ndjson_commit(SAFE, "space", [("README.md", "x")], "main")
+                rollout_hf.ndjson_commit(SAFE, "model", [("README.md", "x")], "main")
 
     def test_immutable_queue_item_is_hold_without_write(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -209,6 +209,96 @@ class SourceGuardTests(unittest.TestCase):
             receipt=json.loads((root/"rollout_receipts.jsonl").read_text().splitlines()[0])
             self.assertEqual(receipt["admission"], "HOLD")
             self.assertFalse((root/"rollout_state.json").exists())
+
+    def test_space_low_level_denied_without_reading_token_or_network(self):
+        with patch.object(
+            rollout_hf, "_write_token", side_effect=AssertionError("token access")
+        ) as token, patch.object(
+            rollout_hf.urllib.request, "urlopen", side_effect=AssertionError("network")
+        ) as network:
+            with self.assertRaisesRegex(
+                guard.Hold, "SPACE_CANONICAL_PUBLISHER_REQUIRED"
+            ):
+                rollout_hf.ndjson_commit(SAFE, "space", [("README.md", "bad")], SHA)
+            token.assert_not_called()
+            network.assert_not_called()
+
+    def test_all_queued_spaces_hold_before_read_or_dispatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "data").mkdir()
+            (root / "data" / "audit-latest.json").write_text(
+                "{}\n", encoding="utf-8"
+            )
+            (root / "queue.jsonl").write_text(
+                json.dumps({"kind": "space", "repo": SAFE}) + "\n",
+                encoding="utf-8",
+            )
+            overrides = {
+                "ROOT": str(root),
+                "Q": str(root / "queue.jsonl"),
+                "RCPT": str(root / "rollout_receipts.jsonl"),
+                "STATE": str(root / "rollout_state.json"),
+                "STOP": str(root / "STOP"),
+            }
+            with patch.multiple(rollout_hf, **overrides), patch.object(
+                rollout_hf, "source_preflight",
+                side_effect=AssertionError("unexpected metadata fetch"),
+            ) as preflight, patch.object(
+                rollout_hf.cardbox, "fetch_readme",
+                side_effect=AssertionError("unexpected read"),
+            ) as readme, patch.object(
+                rollout_hf, "ndjson_commit",
+                side_effect=AssertionError("unexpected provider POST"),
+            ) as commit:
+                rollout_hf.main()
+            preflight.assert_not_called()
+            readme.assert_not_called()
+            commit.assert_not_called()
+            receipt = json.loads(
+                (root / "rollout_receipts.jsonl").read_text(encoding="utf-8").splitlines()[0]
+            )
+            self.assertEqual(receipt["admission"], "HOLD")
+            self.assertEqual(receipt["reason"], "SPACE_CANONICAL_PUBLISHER_REQUIRED")
+            self.assertFalse((root / "rollout_state.json").exists())
+
+    def test_http_429_never_replays_post(self):
+        import urllib.error
+
+        error = urllib.error.HTTPError(
+            "https://example.invalid", 429, "synthetic", {}, None
+        )
+        with patch.object(
+            rollout_hf, "_write_token", return_value="TEST_FIXTURE_ONLY"
+        ), patch.object(
+            rollout_hf.urllib.request, "urlopen", side_effect=error
+        ) as network, patch.object(
+            rollout_hf.time, "sleep", side_effect=AssertionError("retry delay")
+        ) as delay:
+            status, result = rollout_hf.ndjson_commit(
+                SAFE, "model", [("README.md", "synthetic")], SHA
+            )
+        self.assertEqual(status, 429)
+        self.assertEqual(result, "HTTP_PROVIDER_REFUSAL_NO_AUTOMATIC_RESEND")
+        self.assertEqual(network.call_count, 1)
+        delay.assert_not_called()
+
+    def test_timeout_never_replays_unknown_provider_write(self):
+        with patch.object(
+            rollout_hf, "_write_token", return_value="TEST_FIXTURE_ONLY"
+        ), patch.object(
+            rollout_hf.urllib.request, "urlopen",
+            side_effect=TimeoutError("synthetic timeout"),
+        ) as network, patch.object(
+            rollout_hf.time, "sleep", side_effect=AssertionError("retry delay")
+        ) as delay:
+            status, result = rollout_hf.ndjson_commit(
+                SAFE, "dataset", [("README.md", "synthetic")], SHA
+            )
+        self.assertEqual(status, 0)
+        self.assertEqual(result, "PROVIDER_OUTCOME_UNKNOWN_NO_AUTOMATIC_RESEND")
+        self.assertEqual(network.call_count, 1)
+        delay.assert_not_called()
 
 if __name__ == "__main__":
     unittest.main()
