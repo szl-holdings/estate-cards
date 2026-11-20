@@ -49,8 +49,8 @@ def render(audit: dict) -> tuple[str, str]:
         runtime = f"{running}/{spaces} Spaces labeled RUNNING at capture; this is not route or release proof."
     summary = (
         f"<!-- szl:estate-cards:v1 generated {stamp} -->\n\n"
-        "## Estate snapshot\n\n"
-        "[Measured census and limitations](ESTATE_AT_A_GLANCE.md).\n\n"
+        "## Snapshot\n\n"
+        "[Census and limitations](ESTATE_AT_A_GLANCE.md).\n\n"
         "<!-- /szl:estate-cards:v1 -->"
     )
     if len(summary.split()) > 35:
