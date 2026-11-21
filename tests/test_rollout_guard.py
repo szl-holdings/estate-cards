@@ -114,8 +114,8 @@ class RolloutGuardTests(unittest.TestCase):
 
     def test_apply_requires_exact_operator_target_even_with_token(self):
         root = self.fake_queue([{"kind":"model","repo":"SZLHOLDINGS/test-model"}])
-        with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"test-only"}, clear=True), \\
-             patch.object(rollout_hf.cardbox,"fetch_readme",side_effect=AssertionError("fetch")), \\
+        with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"test-only"}, clear=True), \
+             patch.object(rollout_hf.cardbox,"fetch_readme",side_effect=AssertionError("fetch")), \
              patch.object(rollout_hf,"ndjson_commit",side_effect=AssertionError("write")):
             rollout_hf.main(["--apply","--repo","SZLHOLDINGS/test-model"])
         decisions=[json.loads(line)["decision"] for line in
@@ -131,10 +131,10 @@ class RolloutGuardTests(unittest.TestCase):
         ])
         env={"SZL_HF_CARD_PUBLISH_TOKEN":"test-only",
              "SZL_HF_CARD_APPROVED_TARGET":"model:SZLHOLDINGS/test-model"}
-        with patch.dict(os.environ,env,clear=True), \\
-             patch.object(rollout_hf.cardbox,"fetch_readme",return_value="# curated") as fetch, \\
-             patch.object(rollout_hf.cardbox,"build_card",return_value=("card",{},"append")), \\
-             patch.object(rollout_hf,"ndjson_commit",return_value=(200,"")) as writer, \\
+        with patch.dict(os.environ,env,clear=True), \
+             patch.object(rollout_hf.cardbox,"fetch_readme",return_value="# curated") as fetch, \
+             patch.object(rollout_hf.cardbox,"build_card",return_value=("card",{},"append")), \
+             patch.object(rollout_hf,"ndjson_commit",return_value=(200,"")) as writer, \
              patch.object(rollout_hf.time,"sleep",return_value=None):
             rollout_hf.main(["--apply","--repo","SZLHOLDINGS/test-model"])
         fetch.assert_called_once_with("SZLHOLDINGS/test-model","model")
@@ -150,7 +150,7 @@ class RolloutGuardTests(unittest.TestCase):
         ])
         env={"SZL_HF_CARD_PUBLISH_TOKEN":"test-only",
              "SZL_HF_CARD_APPROVED_TARGET":"model:SZLHOLDINGS/test-model"}
-        with patch.dict(os.environ,env,clear=True), \\
+        with patch.dict(os.environ,env,clear=True), \
              patch.object(rollout_hf.cardbox,"fetch_readme",side_effect=AssertionError("fetch")):
             with self.assertRaisesRegex(ValueError, "EXPLICIT_APPROVED_REPOSITORY"):
                 rollout_hf.main(["--apply","--repo","SZLHOLDINGS/test-model"])
