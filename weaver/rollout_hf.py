@@ -29,6 +29,12 @@ def _publisher_token():
         raise RuntimeError("EXPLICIT_CARD_PUBLISH_TOKEN_REQUIRED")
     return token
 
+def _target_admitted(repo_id, kind):
+    # A queue entry, a publish credential and a global --apply are not approval.
+    # A separately injected exact target scopes a single operator-reviewed run.
+    return os.environ.get("SZL_HF_CARD_APPROVED_TARGET", "").strip() == f"{kind}:{repo_id}"
+
+
 COMMIT_EP = 'https://huggingface.co/api/datasets/%s/commit/main'
 
 
@@ -49,7 +55,7 @@ def ndjson_commit(repo_id, kind, files, *, approved=False):
         return 403, "SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED"
     if kind not in ("model", "dataset"):
         return 403, "INVALID_REPOSITORY_KIND"
-    if not approved:
+    if not approved or not _target_admitted(repo_id, kind):
         return 403, "EXPLICIT_OWNER_CARD_ADMISSION_REQUIRED"
 
     base_ep = 'https://huggingface.co/api/%s/%s/commit/main' % (
@@ -88,9 +94,18 @@ def load_state():
 
 def main(argv=None):
     args = sys.argv[1:] if argv is None else list(argv)
-    if args not in ([], ["--apply"]):
-        raise ValueError("USAGE: rollout_hf.py [--apply] (spaces always owner-published)")
-    apply = args == ["--apply"]
+    if not args:
+        apply, approved_repo = False, None
+    elif len(args) == 3 and args[:2] == ["--apply", "--repo"]:
+        apply, approved_repo = True, args[2]
+        # One immutable repository selector, never an entire queued estate.
+        if (not isinstance(approved_repo, str) or not approved_repo.startswith("SZLHOLDINGS/")
+                or approved_repo.count("/") != 1 or len(approved_repo) > 128
+                or not approved_repo.split("/", 1)[1]
+                or not all(c.isalnum() or c in "-_" for c in approved_repo.split("/", 1)[1])):
+            raise ValueError("USAGE: invalid exact --repo target")
+    else:
+        raise ValueError("USAGE: rollout_hf.py [--apply --repo SZLHOLDINGS/NAME]")
 
     if not os.path.exists(Q):
         print('NO_QUEUE', flush=True)
@@ -101,8 +116,13 @@ def main(argv=None):
     done = set(st['done'])
     with open(Q, encoding='utf-8') as f:
         items = [json.loads(l) for l in f if l.strip()]
+    if apply and sum(isinstance(item, dict) and item.get("repo") == approved_repo for item in items) != 1:
+        raise ValueError("EXPLICIT_APPROVED_REPOSITORY_MISSING_OR_DUPLICATE")
     print('QUEUE', len(items), 'done', len(done), flush=True)
     for item in items:
+        # Never touch unrelated queue rows, even if an operator supplied a token.
+        if apply and item.get("repo") != approved_repo:
+            continue
         if os.path.exists(STOP):
             print('STOP_FILE', flush=True); break
         repo = item.get('repo'); kind = item.get('kind')
@@ -125,6 +145,10 @@ def main(argv=None):
         if not apply:
             log({'repo': repo, 'kind': kind, 'decision': 'DRY_RUN_REVIEW_REQUIRED', 'ok': False})
             continue
+        if not _target_admitted(repo, kind):
+            log({'repo': repo, 'kind': kind, 'decision': 'EXPLICIT_OWNER_CARD_ADMISSION_REQUIRED', 'ok': False})
+            print('HOLD_NO_PER_REPOSITORY_ADMISSION', flush=True)
+            break
         if not os.environ.get('SZL_HF_CARD_PUBLISH_TOKEN', '').strip():
             log({'repo': repo, 'kind': kind, 'decision': 'EXPLICIT_CARD_PUBLISH_TOKEN_REQUIRED', 'ok': False})
             print('HOLD_NO_EXPLICIT_PUBLISH_TOKEN', flush=True)
