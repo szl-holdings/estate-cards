@@ -72,7 +72,7 @@ class RolloutGuardTests(unittest.TestCase):
             {"kind":"space","repo":"SZLHOLDINGS/khipu-proof-loom"},
             {"kind":"model","repo":"SZLHOLDINGS/test-model"},
         ])
-        with patch.dict(os.environ, {}, clear=True), \
+        with patch.dict(os.environ, {"SZL_HF_CARD_APPROVED_TARGET":"model:SZLHOLDINGS/test-model"}, clear=True), \
              patch.object(rollout_hf.cardbox,"fetch_readme",side_effect=AssertionError("fetch")), \
              patch.object(rollout_hf,"ndjson_commit",side_effect=AssertionError("commit")):
             rollout_hf.main(["--apply", "--repo", "SZLHOLDINGS/test-model"])
