@@ -1,0 +1,30 @@
+name: Card publication admission (offline Python)
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  offline-admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      SZL_HF_CARD_PUBLISH_TOKEN: ""
+      SZL_HF_CARD_READ_TOKEN: ""
+      SZL_HF_CARD_APPROVED_TARGET: ""
+    steps:
+      - name: Checkout source without persistent credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Pin Python interpreter
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Source-only model/dataset card admission and negative tests
+        run: python -B -W error::ResourceWarning -m unittest discover -s tests -q
