@@ -26,9 +26,13 @@ language. No invented history, no fake benchmarks.
 ```bash
 python -m weaver.audit        # fresh census -> data/audit-latest.json
 python -m weaver.rollout_hf   # DRY RUN: review queue decisions, no HF commits
-# Owner-reviewed model/dataset publication ONLY, with token injected by a
-# protected environment (not read from a workstation credential file):
-# python -m weaver.rollout_hf --apply
+# Owner-reviewed model/dataset publication ONLY, one exact approved repo:
+#   SZL_HF_CARD_APPROVED_TARGET=model:SZLHOLDINGS/example-model
+#   SZL_HF_CARD_PUBLISH_TOKEN is injected by the protected operator environment.
+#   Export neither value to logs or a public workflow; do not use workstation token files.
+# python -m weaver.rollout_hf --apply --repo SZLHOLDINGS/example-model
+# A general --apply without --repo refuses all writes. Every new target needs
+# its own separately reviewed rights/provenance and operator admission.
 
 ```
 
