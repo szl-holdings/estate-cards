@@ -93,6 +93,63 @@ class RolloutGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"USAGE"):
             rollout_hf.main(["--override-space"])
 
+    def test_private_model_read_reuses_explicit_publish_token_without_redirect(self):
+        from unittest.mock import MagicMock
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b"# Existing curated metadata"
+        opener = MagicMock()
+        opener.open.return_value = response
+        with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"synthetic-test-only"}, clear=True):
+            with patch.object(cards.urllib.request, "build_opener", return_value=opener):
+                actual = cards.fetch_readme("SZLHOLDINGS/test-model", "model")
+        self.assertEqual(actual, "# Existing curated metadata")
+        request = opener.open.call_args.args[0]
+        self.assertEqual(request.full_url,
+                         "https://huggingface.co/SZLHOLDINGS/test-model/raw/main/README.md")
+        self.assertEqual(request.get_header("Authorization"), "Bearer synthetic-test-only")
+        self.assertEqual(opener.open.call_count, 1)
+
+    def test_verified_missing_readme_can_compose_without_overwriting(self):
+        from unittest.mock import MagicMock
+        from urllib.error import HTTPError
+        missing = HTTPError("https://huggingface.co/", 404, "not found", {}, None)
+        metadata = MagicMock()
+        metadata.__enter__.return_value.read.return_value = b'{"id":"SZLHOLDINGS/test-model"}'
+        opener = MagicMock()
+        opener.open.side_effect = [missing, metadata]
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(cards.urllib.request, "build_opener", return_value=opener):
+                self.assertEqual(cards.fetch_readme("SZLHOLDINGS/test-model", "model"), "")
+        self.assertEqual(opener.open.call_count, 2)
+        self.assertEqual(opener.open.call_args.args[0].full_url,
+                         "https://huggingface.co/api/models/SZLHOLDINGS/test-model")
+
+    def test_missing_repo_or_unavailable_readme_never_composes(self):
+        from unittest.mock import MagicMock
+        from urllib.error import HTTPError
+        missing = lambda: HTTPError("https://huggingface.co/", 404, "not found", {}, None)
+        for errors, expected_calls in (([missing(), missing()], 2),
+                                       ([HTTPError("https://huggingface.co/", 429,
+                                                   "rate limited", {}, None)], 1)):
+            opener = MagicMock()
+            opener.open.side_effect = errors
+            with self.subTest(calls=expected_calls):
+                with patch.dict(os.environ, {}, clear=True):
+                    with patch.object(cards.urllib.request, "build_opener", return_value=opener):
+                        self.assertIsNone(cards.fetch_readme("SZLHOLDINGS/test-model", "model"))
+                self.assertEqual(opener.open.call_count, expected_calls)
+
+    def test_readme_reader_rejects_redirect_and_space_namespace(self):
+        from unittest.mock import MagicMock
+        opener = MagicMock()
+        with patch.object(cards.urllib.request, "build_opener", return_value=opener):
+            self.assertIsNone(cards.fetch_readme("SZLHOLDINGS/anatomy", "space"))
+            self.assertIsNone(cards.fetch_readme("SZLHOLDINGS/../escape", "model"))
+        opener.open.assert_not_called()
+        with self.assertRaisesRegex(ValueError, "UNEXPECTED_README_REDIRECT"):
+            cards._RejectRedirects().redirect_request(None, None, 302, "Found",
+                                                       {}, "https://example.invalid")
+
     def test_model_apply_synthetic_writer_only(self):
         root=self.fake_queue([{"kind":"model","repo":"SZLHOLDINGS/test-model"}])
         with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"test-only",
