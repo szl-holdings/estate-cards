@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import urllib.request
+import urllib.error
 import datetime
 
 from weaver import charts
@@ -17,9 +18,11 @@ from weaver import policy
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def _read_headers():
-    # Do not load local credential files at import time or copy credentials into cards.
-    # Anonymous reads are enough for public, non-source-sealed model/dataset cards.
-    token = os.environ.get("SZL_HF_CARD_READ_TOKEN", "").strip()
+    # Only explicitly injected credentials, never a local workstation token file.
+    # The bounded GET reuses the operator-supplied publish token if no separate
+    # read token was injected; redirects are refused to keep it on this origin.
+    token = (os.environ.get("SZL_HF_CARD_READ_TOKEN") or
+             os.environ.get("SZL_HF_CARD_PUBLISH_TOKEN") or "").strip()
     return {"Authorization": "Bearer " + token} if token else {}
 
 CARD_MARK = '<!-- szl:showcase-card v1'
@@ -29,14 +32,54 @@ def now():
     return datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
+class _RejectRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        # Authorization is never forwarded to a redirect destination.
+        raise ValueError("UNEXPECTED_README_REDIRECT")
+
+
 def fetch_readme(repo_id, repo_type):
-    base = {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}[repo_type]
-    url = 'https://huggingface.co/%s/%s/raw/main/README.md' % (base, repo_id)
+    """Return text, '' for verified absent README, or None on uncertainty.
+
+    An HTTP 404 for README is not proof that the repository exists. Only an
+    exact authenticated provider metadata read can distinguish those cases.
+    A missing/failed read never authorizes overwriting existing card bytes.
+    """
+    if repo_type not in ('model', 'dataset'):
+        return None  # Spaces are source-sealed and never published here.
+    if not isinstance(repo_id, str) or not repo_id.startswith("SZLHOLDINGS/") or repo_id.count("/") != 1:
+        return None
+    slug = repo_id.split("/", 1)[1]
+    if not slug or len(repo_id) > 128 or not all(c.isalnum() or c in '-_' for c in slug):
+        return None
+    base = {'model': '', 'dataset': 'datasets/'}[repo_type]
+    url = 'https://huggingface.co/%s%s/raw/main/README.md' % (base, repo_id)
     req = urllib.request.Request(url, headers=_read_headers())
+    opener = urllib.request.build_opener(_RejectRedirects())
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:
-            return r.read().decode('utf-8')
-    except Exception:
+        with opener.open(req, timeout=15) as r:
+            raw = r.read(1_000_001)
+        return raw.decode('utf-8') if len(raw) <= 1_000_000 else None
+    except urllib.error.HTTPError as exc:
+        if exc.code != 404:
+            return None
+        # A 404 may mean no README, no repository, or a visibility failure.
+        # Refuse to compose a fresh card until exact repo identity is observed.
+        api_type = {'model': 'models', 'dataset': 'datasets'}[repo_type]
+        endpoint = 'https://huggingface.co/api/%s/%s' % (api_type, repo_id)
+        check = urllib.request.Request(endpoint, headers=_read_headers())
+        try:
+            with opener.open(check, timeout=15) as response:
+                raw = response.read(131_073)
+            if len(raw) > 131_072:
+                return None
+            metadata = json.loads(raw)
+            if isinstance(metadata, dict) and metadata.get('id') == repo_id:
+                return ''  # Proven repository exists; README was absent.
+        except (ValueError, UnicodeError, OSError, urllib.error.URLError):
+            return None
+        return None
+    except (ValueError, UnicodeError, OSError, urllib.error.URLError):
         return None
 
 
