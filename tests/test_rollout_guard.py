@@ -123,6 +123,7 @@ class RolloutGuardTests(unittest.TestCase):
         self.assertEqual(opener.open.call_count, 2)
         self.assertEqual(opener.open.call_args.args[0].full_url,
                          "https://huggingface.co/api/models/SZLHOLDINGS/test-model")
+        missing.close()
 
     def test_missing_repo_or_unavailable_readme_never_composes(self):
         from unittest.mock import MagicMock
@@ -138,6 +139,8 @@ class RolloutGuardTests(unittest.TestCase):
                     with patch.object(cards.urllib.request, "build_opener", return_value=opener):
                         self.assertIsNone(cards.fetch_readme("SZLHOLDINGS/test-model", "model"))
                 self.assertEqual(opener.open.call_count, expected_calls)
+                for error in errors:
+                    error.close()
 
     def test_readme_reader_rejects_redirect_and_space_namespace(self):
         from unittest.mock import MagicMock
