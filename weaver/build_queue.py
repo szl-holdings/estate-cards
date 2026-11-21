@@ -27,14 +27,15 @@ PURPOSES = {
 
 queue = []
 for kind, repo in policy.FIRST_WAVE:
-    queue.append({'kind': kind, 'repo': repo, 'purpose': PURPOSES.get(repo)})
+    if not policy.source_managed(kind, repo):
+        queue.append({'kind': kind, 'repo': repo, 'purpose': PURPOSES.get(repo)})
 
 # full org: everything public, models first, then datasets, then spaces
 seen = set((k, r) for k, r in policy.FIRST_WAVE)
 for kind, key in (('model', 'hf_models'), ('dataset', 'hf_datasets'), ('space', 'hf_spaces')):
     for item in audit[key]['items']:
         rid = item['id']
-        if item.get('private'):
+        if item.get('private') or policy.source_managed(kind, rid):
             continue
         if (kind, rid) in seen:
             continue

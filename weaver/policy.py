@@ -32,6 +32,14 @@ def source_for(repo_id):
     return MAP.get(repo_id, GH + " (org)")
 
 
+# Canonical deployments publish the exact source tree through their own writer.
+SOURCE_MANAGED = {("space", "szlholdings/llm-router-live")}
+
+
+def source_managed(kind, repo_id):
+    return (kind.casefold(), repo_id.casefold()) in SOURCE_MANAGED
+
+
 # first wave: flagship repos get hand-tuned evidence-rich cards
 FIRST_WAVE = [
     ("model", "SZLHOLDINGS/salad-khipu-scholar-v1"),

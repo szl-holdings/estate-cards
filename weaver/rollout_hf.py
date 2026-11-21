@@ -16,6 +16,7 @@ import urllib.error
 import datetime
 
 from weaver import cards as cardbox
+from weaver import policy
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 Q = os.path.join(ROOT, 'queue.jsonl')
@@ -85,6 +86,9 @@ def main():
         if os.path.exists(STOP):
             print('STOP_FILE', flush=True); break
         repo = item['repo']; kind = item['kind']
+        if policy.source_managed(kind, repo):
+            log({'repo': repo, 'kind': kind, 'status': 'skipped_source_managed'})
+            continue
         if repo in done:
             continue
         try:
