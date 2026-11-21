@@ -46,6 +46,10 @@ class RolloutGuardTests(unittest.TestCase):
         with patch.object(rollout_hf.urllib.request, "urlopen", side_effect=AssertionError("network")):
             code, reason=rollout_hf.ndjson_commit("SZLHOLDINGS/m","model",[],approved=False)
         self.assertEqual((code,reason),(403,"EXPLICIT_OWNER_CARD_ADMISSION_REQUIRED"))
+        # A caller cannot impersonate operator approval with approved=True.
+        with patch.dict(os.environ, {}, clear=True):
+            code, reason = rollout_hf.ndjson_commit("SZLHOLDINGS/m", "model", [], approved=True)
+        self.assertEqual((code,reason),(403,"EXPLICIT_OWNER_CARD_ADMISSION_REQUIRED"))
 
     def test_default_dry_run_no_fetch_or_commit(self):
         root=self.fake_queue([
@@ -71,11 +75,9 @@ class RolloutGuardTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True), \
              patch.object(rollout_hf.cardbox,"fetch_readme",side_effect=AssertionError("fetch")), \
              patch.object(rollout_hf,"ndjson_commit",side_effect=AssertionError("commit")):
-            rollout_hf.main(["--apply"])
+            rollout_hf.main(["--apply", "--repo", "SZLHOLDINGS/test-model"])
         decisions=[json.loads(l)["decision"] for l in (root/"rollout_receipts.jsonl").read_text().splitlines()]
-        self.assertEqual(decisions,[
-            "SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED",
-            "EXPLICIT_CARD_PUBLISH_TOKEN_REQUIRED"])
+        self.assertEqual(decisions,["EXPLICIT_CARD_PUBLISH_TOKEN_REQUIRED"])
 
     def test_invalid_repo_and_kind(self):
         root=self.fake_queue([
@@ -93,15 +95,65 @@ class RolloutGuardTests(unittest.TestCase):
 
     def test_model_apply_synthetic_writer_only(self):
         root=self.fake_queue([{"kind":"model","repo":"SZLHOLDINGS/test-model"}])
-        with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"test-only"}, clear=True), \
+        with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"test-only",
+                                     "SZL_HF_CARD_APPROVED_TARGET":"model:SZLHOLDINGS/test-model"}, clear=True), \
              patch.object(rollout_hf.cardbox,"fetch_readme",return_value="# curated"), \
              patch.object(rollout_hf.cardbox,"build_card",return_value=("card",{},"append")), \
              patch.object(rollout_hf,"ndjson_commit",return_value=(200,"")) as writer, \
              patch.object(rollout_hf.time,"sleep",return_value=None):
-            rollout_hf.main(["--apply"])
+            rollout_hf.main(["--apply", "--repo", "SZLHOLDINGS/test-model"])
         writer.assert_called_once_with("SZLHOLDINGS/test-model","model",
             [("README.md","card")],approved=True)
         self.assertEqual(json.loads((root/"rollout_state.json").read_text())["done"],["SZLHOLDINGS/test-model"])
+
+    def test_apply_requires_one_exact_repo_selector(self):
+        for args in (["--apply"], ["--apply", "--repo", "SZLHOLDINGS/../escape"],
+                     ["--apply", "--repo", "SZLHOLDINGS/m", "--all"]):
+            with self.subTest(args=args), self.assertRaisesRegex(ValueError, "USAGE"):
+                rollout_hf.main(args)
+
+    def test_apply_requires_exact_operator_target_even_with_token(self):
+        root = self.fake_queue([{"kind":"model","repo":"SZLHOLDINGS/test-model"}])
+        with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"test-only"}, clear=True), \\
+             patch.object(rollout_hf.cardbox,"fetch_readme",side_effect=AssertionError("fetch")), \\
+             patch.object(rollout_hf,"ndjson_commit",side_effect=AssertionError("write")):
+            rollout_hf.main(["--apply","--repo","SZLHOLDINGS/test-model"])
+        decisions=[json.loads(line)["decision"] for line in
+                   (root/"rollout_receipts.jsonl").read_text().splitlines()]
+        self.assertEqual(decisions, ["EXPLICIT_OWNER_CARD_ADMISSION_REQUIRED"])
+        self.assertFalse((root/"rollout_state.json").exists())
+
+    def test_apply_touches_only_exact_approved_queue_row(self):
+        root=self.fake_queue([
+            {"kind":"dataset","repo":"SZLHOLDINGS/other-data"},
+            {"kind":"model","repo":"SZLHOLDINGS/test-model"},
+            {"kind":"model","repo":"SZLHOLDINGS/other-model"},
+        ])
+        env={"SZL_HF_CARD_PUBLISH_TOKEN":"test-only",
+             "SZL_HF_CARD_APPROVED_TARGET":"model:SZLHOLDINGS/test-model"}
+        with patch.dict(os.environ,env,clear=True), \\
+             patch.object(rollout_hf.cardbox,"fetch_readme",return_value="# curated") as fetch, \\
+             patch.object(rollout_hf.cardbox,"build_card",return_value=("card",{},"append")), \\
+             patch.object(rollout_hf,"ndjson_commit",return_value=(200,"")) as writer, \\
+             patch.object(rollout_hf.time,"sleep",return_value=None):
+            rollout_hf.main(["--apply","--repo","SZLHOLDINGS/test-model"])
+        fetch.assert_called_once_with("SZLHOLDINGS/test-model","model")
+        writer.assert_called_once_with("SZLHOLDINGS/test-model","model",
+                                       [("README.md","card")],approved=True)
+        self.assertEqual(json.loads((root/"rollout_state.json").read_text())["done"],
+                         ["SZLHOLDINGS/test-model"])
+
+    def test_duplicate_approval_target_refuses_all_network(self):
+        self.fake_queue([
+            {"kind":"model","repo":"SZLHOLDINGS/test-model"},
+            {"kind":"model","repo":"SZLHOLDINGS/test-model"},
+        ])
+        env={"SZL_HF_CARD_PUBLISH_TOKEN":"test-only",
+             "SZL_HF_CARD_APPROVED_TARGET":"model:SZLHOLDINGS/test-model"}
+        with patch.dict(os.environ,env,clear=True), \\
+             patch.object(rollout_hf.cardbox,"fetch_readme",side_effect=AssertionError("fetch")):
+            with self.assertRaisesRegex(ValueError, "EXPLICIT_APPROVED_REPOSITORY"):
+                rollout_hf.main(["--apply","--repo","SZLHOLDINGS/test-model"])
 
     def test_curated_card_refresh_is_idempotent_and_preserves_license(self):
         audit = {
@@ -141,11 +193,12 @@ class RolloutGuardTests(unittest.TestCase):
 
     def test_unavailable_readme_cannot_overwrite_a_model_card(self):
         root = self.fake_queue([{"kind":"model","repo":"SZLHOLDINGS/test-model"}])
-        with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"test-only"}, clear=True), \
+        with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"test-only",
+                                     "SZL_HF_CARD_APPROVED_TARGET":"model:SZLHOLDINGS/test-model"}, clear=True), \
              patch.object(rollout_hf.cardbox, "fetch_readme", return_value=None), \
              patch.object(rollout_hf, "ndjson_commit", side_effect=AssertionError("commit")), \
              patch.object(rollout_hf.time, "sleep", return_value=None):
-            rollout_hf.main(["--apply"])
+            rollout_hf.main(["--apply", "--repo", "SZLHOLDINGS/test-model"])
         rows=[json.loads(l) for l in (root/"rollout_receipts.jsonl").read_text().splitlines()]
         self.assertEqual(len(rows),1)
         self.assertIn("README_READ_UNAVAILABLE_FAIL_CLOSED",rows[0].get("err",""))
