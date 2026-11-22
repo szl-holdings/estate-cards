@@ -30,17 +30,54 @@ class RolloutGuardTests(unittest.TestCase):
         return root
 
     def test_import_only_uses_explicit_environment(self):
-        with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(cards._read_headers(), {})
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("builtins.open", side_effect=AssertionError("token file access")):
+            with self.assertRaisesRegex(cards.CardReadHold, "CARD_AUTH_UNAVAILABLE"):
+                cards._auth_headers()
             with self.assertRaisesRegex(RuntimeError, "EXPLICIT_CARD_PUBLISH_TOKEN_REQUIRED"):
                 rollout_hf._publisher_token()
 
     def test_space_commit_denied_before_network(self):
-        with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN": "fake"}, clear=True):
-            with patch.object(rollout_hf.urllib.request, "urlopen", side_effect=AssertionError("network")):
-                status, reason = rollout_hf.ndjson_commit(
-                    "SZLHOLDINGS/khipu-proof-loom", "space", [("README.md", "changed")], approved=True)
-        self.assertEqual((status, reason), (403, "SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED"))
+        # All source-owned Space READMEs require their canonical GitHub publisher.
+        # The known 2026-11-22 failures must remain denied even with a forged
+        # per-target card admission and a test-only publishing token.
+        for space in (
+            "SZLHOLDINGS/khipu-proof-loom",
+            "SZLHOLDINGS/szl-model-inference-lab",
+            "SZLHOLDINGS/szl-constellation",
+            "SZLHOLDINGS/szl-constellation-staging",
+        ):
+            with self.subTest(space=space):
+                with patch.dict(os.environ, {
+                    "SZL_HF_CARD_PUBLISH_TOKEN": "synthetic-test-only",
+                    "SZL_HF_CARD_APPROVED_TARGET": "space:" + space,
+                }, clear=True), \
+                     patch.object(rollout_hf, "_publisher_token",
+                                  side_effect=AssertionError("credential requested")), \
+                     patch.object(rollout_hf._COMMIT_OPENER, "open",
+                                  side_effect=AssertionError("network")):
+                    status, reason = rollout_hf.ndjson_commit(
+                        space, "space", [("README.md", "changed")], approved=True)
+                    self.assertEqual(
+                        (status, reason),
+                        (403, "SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED"),
+                    )
+
+    def test_source_managed_model_denied_before_credentials(self):
+        with patch.dict(os.environ, {
+            "SZL_HF_CARD_PUBLISH_TOKEN": "synthetic-test-only",
+            "SZL_HF_CARD_APPROVED_TARGET": "model:SZLHOLDINGS/SZL-Khipu-1.5B-GGUF",
+        }, clear=True), \
+             patch.object(rollout_hf.policy, "source_managed", return_value=True), \
+             patch.object(rollout_hf, "_publisher_token", side_effect=AssertionError("credential")), \
+             patch.object(rollout_hf._COMMIT_OPENER, "open", side_effect=AssertionError("network")):
+            status, reason = rollout_hf.ndjson_commit(
+                "SZLHOLDINGS/SZL-Khipu-1.5B-GGUF",
+                "model", [("README.md", "changed")], approved=True)
+            self.assertEqual(
+                (status, reason),
+                (403, "SOURCE_OWNED_REPOSITORY_PUBLISHER_REQUIRED"),
+            )
 
     def test_model_direct_commit_without_admission_denied(self):
         with patch.object(rollout_hf.urllib.request, "urlopen", side_effect=AssertionError("network")):
@@ -96,62 +133,61 @@ class RolloutGuardTests(unittest.TestCase):
     def test_private_model_read_reuses_explicit_publish_token_without_redirect(self):
         from unittest.mock import MagicMock
         response = MagicMock()
-        response.__enter__.return_value.read.return_value = b"# Existing curated metadata"
-        opener = MagicMock()
-        opener.open.return_value = response
+        response.status = 200
+        response.headers.get.return_value = "text/plain"
+        response.read.return_value = b"# Existing curated metadata"
+        response.__enter__.return_value = response
         with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"synthetic-test-only"}, clear=True):
-            with patch.object(cards.urllib.request, "build_opener", return_value=opener):
+            with patch.object(cards._READ_OPENER, "open", return_value=response) as opener:
                 actual = cards.fetch_readme("SZLHOLDINGS/test-model", "model")
         self.assertEqual(actual, "# Existing curated metadata")
-        request = opener.open.call_args.args[0]
+        request = opener.call_args.args[0]
         self.assertEqual(request.full_url,
                          "https://huggingface.co/SZLHOLDINGS/test-model/raw/main/README.md")
         self.assertEqual(request.get_header("Authorization"), "Bearer synthetic-test-only")
-        self.assertEqual(opener.open.call_count, 1)
+        self.assertEqual(opener.call_count, 1)
 
-    def test_verified_missing_readme_can_compose_without_overwriting(self):
+    def test_verified_missing_readme_requires_metadata_identity(self):
         from unittest.mock import MagicMock
         from urllib.error import HTTPError
         missing = HTTPError("https://huggingface.co/", 404, "not found", {}, None)
         metadata = MagicMock()
-        metadata.__enter__.return_value.read.return_value = b'{"id":"SZLHOLDINGS/test-model"}'
-        opener = MagicMock()
-        opener.open.side_effect = [missing, metadata]
-        with patch.dict(os.environ, {}, clear=True):
-            with patch.object(cards.urllib.request, "build_opener", return_value=opener):
+        metadata.status = 200
+        metadata.headers.get.return_value = "application/json"
+        metadata.read.return_value = b'{"id":"SZLHOLDINGS/test-model"}'
+        metadata.__enter__.return_value = metadata
+        with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"synthetic-test-only"}, clear=True):
+            with patch.object(cards._READ_OPENER, "open", side_effect=[missing, metadata]) as opener:
                 self.assertEqual(cards.fetch_readme("SZLHOLDINGS/test-model", "model"), "")
-        self.assertEqual(opener.open.call_count, 2)
-        self.assertEqual(opener.open.call_args.args[0].full_url,
+        self.assertEqual(opener.call_count, 2)
+        self.assertEqual(opener.call_args.args[0].full_url,
                          "https://huggingface.co/api/models/SZLHOLDINGS/test-model")
-        missing.close()
 
     def test_missing_repo_or_unavailable_readme_never_composes(self):
-        from unittest.mock import MagicMock
         from urllib.error import HTTPError
-        missing = lambda: HTTPError("https://huggingface.co/", 404, "not found", {}, None)
-        for errors, expected_calls in (([missing(), missing()], 2),
-                                       ([HTTPError("https://huggingface.co/", 429,
-                                                   "rate limited", {}, None)], 1)):
-            opener = MagicMock()
-            opener.open.side_effect = errors
-            with self.subTest(calls=expected_calls):
-                with patch.dict(os.environ, {}, clear=True):
-                    with patch.object(cards.urllib.request, "build_opener", return_value=opener):
-                        self.assertIsNone(cards.fetch_readme("SZLHOLDINGS/test-model", "model"))
-                self.assertEqual(opener.open.call_count, expected_calls)
-                for error in errors:
-                    error.close()
+        for status, expected_calls, reason in (
+            (404, 2, "CARD_SOURCE_UNVERIFIED"),
+            (429, 1, "CARD_READ_UNAVAILABLE"),
+        ):
+            errors = [HTTPError("https://huggingface.co/", status, "unavailable", {}, None)
+                      for _ in range(expected_calls)]
+            with self.subTest(status=status):
+                with patch.dict(os.environ, {"SZL_HF_CARD_PUBLISH_TOKEN":"synthetic-test-only"}, clear=True):
+                    with patch.object(cards._READ_OPENER, "open", side_effect=errors) as opener:
+                        with self.assertRaisesRegex(cards.CardReadHold, reason):
+                            cards.fetch_readme("SZLHOLDINGS/test-model", "model")
+                self.assertEqual(opener.call_count, expected_calls)
 
     def test_readme_reader_rejects_redirect_and_space_namespace(self):
-        from unittest.mock import MagicMock
-        opener = MagicMock()
-        with patch.object(cards.urllib.request, "build_opener", return_value=opener):
-            self.assertIsNone(cards.fetch_readme("SZLHOLDINGS/anatomy", "space"))
-            self.assertIsNone(cards.fetch_readme("SZLHOLDINGS/../escape", "model"))
-        opener.open.assert_not_called()
-        with self.assertRaisesRegex(ValueError, "UNEXPECTED_README_REDIRECT"):
-            cards._RejectRedirects().redirect_request(None, None, 302, "Found",
-                                                       {}, "https://example.invalid")
+        with patch.object(cards._READ_OPENER, "open", side_effect=AssertionError("network")) as opener:
+            for repo, kind in (("SZLHOLDINGS/anatomy", "space"), ("SZLHOLDINGS/../escape", "model")):
+                with self.subTest(repo=repo):
+                    with self.assertRaisesRegex(cards.CardReadHold, "CARD_SOURCE_ID_INVALID"):
+                        cards.fetch_readme(repo, kind)
+            opener.assert_not_called()
+        with self.assertRaisesRegex(cards.CardReadHold, "CARD_READ_REDIRECT_REFUSED"):
+            cards._NoRedirect().redirect_request(None, None, 302, "Found", {},
+                                                  "https://example.invalid")
 
     def test_model_apply_synthetic_writer_only(self):
         root=self.fake_queue([{"kind":"model","repo":"SZLHOLDINGS/test-model"}])

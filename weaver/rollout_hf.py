@@ -9,19 +9,21 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
-import os
 import time
 import urllib.request
 import urllib.error
 import datetime
 
 from weaver import cards as cardbox
+from weaver import policy
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 Q = os.path.join(ROOT, 'queue.jsonl')
 RCPT = os.path.join(ROOT, 'rollout_receipts.jsonl')
 STATE = os.path.join(ROOT, 'rollout_state.json')
 STOP = os.path.join(ROOT, 'STOP')
+
+
 def _publisher_token():
     # Explicit owner-supplied credential only; never scrape a workstation token file.
     token = os.environ.get("SZL_HF_CARD_PUBLISH_TOKEN", "").strip()
@@ -35,7 +37,10 @@ def _target_admitted(repo_id, kind):
     return os.environ.get("SZL_HF_CARD_APPROVED_TARGET", "").strip() == f"{kind}:{repo_id}"
 
 
-COMMIT_EP = 'https://huggingface.co/api/datasets/%s/commit/main'
+_COMMIT_OPENER = urllib.request.build_opener(
+    urllib.request.ProxyHandler({}),
+    cardbox._NoRedirect(),
+)
 
 
 def now():
@@ -55,24 +60,31 @@ def ndjson_commit(repo_id, kind, files, *, approved=False):
         return 403, "SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED"
     if kind not in ("model", "dataset"):
         return 403, "INVALID_REPOSITORY_KIND"
+    if not isinstance(repo_id, str) or not cardbox.PUBLIC_REPO.fullmatch(repo_id):
+        return 403, "INVALID_REPOSITORY"
+    if policy.source_managed(kind, repo_id):
+        return 403, "SOURCE_OWNED_REPOSITORY_PUBLISHER_REQUIRED"
     if not approved or not _target_admitted(repo_id, kind):
         return 403, "EXPLICIT_OWNER_CARD_ADMISSION_REQUIRED"
 
     base_ep = 'https://huggingface.co/api/%s/%s/commit/main' % (
-        {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}[kind], repo_id)
+        {'model': 'models', 'dataset': 'datasets'}[kind], repo_id)
     nd = json.dumps({'key': 'header', 'value': {'summary': 'SZL estate showcase card (weaver v0.1.0, deterministic SVG charts)',
                                                 'description': 'Source: github.com/szl-holdings/estate-cards. Receipt-honest append/refresh.'}})
     for path, content in files:
         nd += chr(10) + json.dumps({'key': 'file', 'value': {'path': path, 'content': content}},
                                    ensure_ascii=False)
     body = nd.encode('utf-8')
+    token = _publisher_token()
     for attempt in range(6):
         try:
             req = urllib.request.Request(base_ep, data=body, method='POST',
-                                         headers={'Authorization': 'Bearer ' + _publisher_token(),
+                                         headers={'Authorization': 'Bearer ' + token,
                                                   'Content-Type': 'application/x-ndjson'})
-            with urllib.request.urlopen(req, timeout=180) as r:
+            with _COMMIT_OPENER.open(req, timeout=180) as r:
                 return r.status, r.read().decode('utf-8')[:300]
+        except cardbox.CardReadHold:
+            return 0, 'CARD_COMMIT_REDIRECT_REFUSED'
         except urllib.error.HTTPError as e:
             detail = e.read().decode('utf-8')[:200]
             if e.code == 429:
@@ -99,10 +111,7 @@ def main(argv=None):
     elif len(args) == 3 and args[:2] == ["--apply", "--repo"]:
         apply, approved_repo = True, args[2]
         # One immutable repository selector, never an entire queued estate.
-        if (not isinstance(approved_repo, str) or not approved_repo.startswith("SZLHOLDINGS/")
-                or approved_repo.count("/") != 1 or len(approved_repo) > 128
-                or not approved_repo.split("/", 1)[1]
-                or not all(c.isalnum() or c in "-_" for c in approved_repo.split("/", 1)[1])):
+        if not isinstance(approved_repo, str) or not cardbox.PUBLIC_REPO.fullmatch(approved_repo):
             raise ValueError("USAGE: invalid exact --repo target")
     else:
         raise ValueError("USAGE: rollout_hf.py [--apply --repo SZLHOLDINGS/NAME]")
@@ -125,20 +134,20 @@ def main(argv=None):
             continue
         if os.path.exists(STOP):
             print('STOP_FILE', flush=True); break
-        repo = item.get('repo'); kind = item.get('kind')
-        # No auto-approval from an estate-wide instruction or a queue row.
-        # Source-owned Spaces MUST publish cards through their authorized GitHub
-        # manifests and maintenance-window workflow, never a parallel Hub writer.
-        if not isinstance(repo, str) or not repo.startswith('SZLHOLDINGS/') or (
-                len(repo) > 128 or not all(c.isalnum() or c in '-_/' for c in repo)):
+        repo = item.get('repo')
+        kind = item.get('kind')
+        if not isinstance(repo, str) or not cardbox.PUBLIC_REPO.fullmatch(repo):
             log({'repo': str(repo)[:128], 'kind': kind, 'decision': 'INVALID_REPOSITORY', 'ok': False})
+            continue
+        if kind not in ('space', 'model', 'dataset'):
+            log({'repo': repo, 'kind': kind, 'decision': 'INVALID_REPOSITORY_KIND', 'ok': False})
+            continue
+        if policy.source_managed(kind, repo):
+            log({'repo': repo, 'kind': kind, 'status': 'skipped_source_managed'})
             continue
         if kind == 'space':
             log({'repo': repo, 'kind': kind, 'decision': 'SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED', 'ok': False})
             print('SKIP_SOURCE_OWNED_SPACE', repo, flush=True)
-            continue
-        if kind not in ('model', 'dataset'):
-            log({'repo': repo, 'kind': kind, 'decision': 'INVALID_REPOSITORY_KIND', 'ok': False})
             continue
         if repo in done:
             continue
@@ -155,10 +164,8 @@ def main(argv=None):
             break
         try:
             cur = cardbox.fetch_readme(repo, kind)
-            # A 429/403/timeout is indistinguishable from absent README in the
-            # legacy reader. Never compose over unknown existing model metadata.
             if cur is None:
-                raise RuntimeError('README_READ_UNAVAILABLE_FAIL_CLOSED')
+                raise cardbox.CardReadHold('README_READ_UNAVAILABLE_FAIL_CLOSED')
             content, assets, mode = cardbox.build_card(kind, repo, audit, cur,
                                                         item.get('purpose'), item.get('meta_extra'))
             files = [('README.md', content)]

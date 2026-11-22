@@ -6,81 +6,111 @@ Rules (estate doctrine):
 - every number carries MEASURED/REPORTED/UNKNOWN + source + UTC.
 - charts are deterministic stdlib SVG committed alongside the card.
 """
+import datetime
 import hashlib
+import html
+import http.client
 import json
 import os
-import urllib.request
+import re
 import urllib.error
-import datetime
+import urllib.request
 
-from weaver import charts
-from weaver import policy
+from weaver import charts, policy
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-def _read_headers():
-    # Only explicitly injected credentials, never a local workstation token file.
-    # The bounded GET reuses the operator-supplied publish token if no separate
-    # read token was injected; redirects are refused to keep it on this origin.
-    token = (os.environ.get("SZL_HF_CARD_READ_TOKEN") or
-             os.environ.get("SZL_HF_CARD_PUBLISH_TOKEN") or "").strip()
-    return {"Authorization": "Bearer " + token} if token else {}
-
 CARD_MARK = '<!-- szl:showcase-card v1'
+README_LIMIT = 1_000_000
+REPO_METADATA_LIMIT = 131_072
+PUBLIC_REPO = re.compile(r"SZLHOLDINGS/[A-Za-z0-9][A-Za-z0-9_.-]{0,115}")
+MODEL_META_KEYS = frozenset({"architecture", "parameters", "pipeline_tag", "source_revision"})
+
+
+class CardReadHold(RuntimeError):
+    """No missing/ambiguous source observation can become a successful card write."""
+
+
+def _auth_headers():
+    token = (os.environ.get("SZL_HF_CARD_READ_TOKEN", "").strip()
+             or os.environ.get("SZL_HF_CARD_PUBLISH_TOKEN", "").strip())
+    if not token:
+        raise CardReadHold("CARD_AUTH_UNAVAILABLE")
+    return {'Authorization': 'Bearer ' + token}
 
 
 def now():
     return datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
-class _RejectRedirects(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, request, fp, code, msg, headers, newurl):
-        # Authorization is never forwarded to a redirect destination.
-        raise ValueError("UNEXPECTED_README_REDIRECT")
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Never forward the Hugging Face bearer header to another host."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise CardReadHold("CARD_READ_REDIRECT_REFUSED")
+
+
+_READ_OPENER = urllib.request.build_opener(
+    urllib.request.ProxyHandler({}),
+    _NoRedirect(),
+)
+
+
+def _bounded_get(url, headers, allowed_types, limit):
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with _READ_OPENER.open(req, timeout=30) as response:
+            if response.status != 200:
+                raise CardReadHold("CARD_READ_HTTP_NON_200")
+            content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if content_type not in allowed_types:
+                raise CardReadHold("CARD_READ_CONTENT_TYPE_INVALID")
+            raw = response.read(limit + 1)
+    except urllib.error.HTTPError as error:
+        error.close()
+        if error.code == 404:
+            return None
+        raise CardReadHold("CARD_READ_UNAVAILABLE") from None
+    except (OSError, http.client.HTTPException):
+        raise CardReadHold("CARD_READ_UNAVAILABLE") from None
+    if len(raw) > limit:
+        raise CardReadHold("CARD_READ_TOO_LARGE")
+    if not raw:
+        raise CardReadHold("CARD_READ_EMPTY")
+    try:
+        return raw.decode("utf-8", errors="strict")
+    except UnicodeError:
+        raise CardReadHold("CARD_READ_NOT_UTF8") from None
 
 
 def fetch_readme(repo_id, repo_type):
-    """Return text, '' for verified absent README, or None on uncertainty.
+    """Return README text or an empty string after verifying repository identity."""
+    prefixes = {'model': '', 'dataset': 'datasets/'}
+    if repo_type not in ('model', 'dataset') or type(repo_id) is not str or not PUBLIC_REPO.fullmatch(repo_id):
+        raise CardReadHold("CARD_SOURCE_ID_INVALID")
 
-    An HTTP 404 for README is not proof that the repository exists. Only an
-    exact authenticated provider metadata read can distinguish those cases.
-    A missing/failed read never authorizes overwriting existing card bytes.
-    """
-    if repo_type not in ('model', 'dataset'):
-        return None  # Spaces are source-sealed and never published here.
-    if not isinstance(repo_id, str) or not repo_id.startswith("SZLHOLDINGS/") or repo_id.count("/") != 1:
-        return None
-    slug = repo_id.split("/", 1)[1]
-    if not slug or len(repo_id) > 128 or not all(c.isalnum() or c in '-_' for c in slug):
-        return None
-    base = {'model': '', 'dataset': 'datasets/'}[repo_type]
-    url = 'https://huggingface.co/%s%s/raw/main/README.md' % (base, repo_id)
-    req = urllib.request.Request(url, headers=_read_headers())
-    opener = urllib.request.build_opener(_RejectRedirects())
+    origin = 'https://huggingface.co/'
+    headers = _auth_headers()
+    url = origin + prefixes[repo_type] + repo_id + '/raw/main/README.md'
+    current = _bounded_get(url, headers, (
+        "text/plain", "text/markdown", "application/octet-stream",
+    ), README_LIMIT)
+    if current is not None:
+        return current
+
+    api_type = {'model': 'models', 'dataset': 'datasets'}[repo_type]
+    metadata = _bounded_get(
+        origin + 'api/' + api_type + '/' + repo_id,
+        headers, ("application/json",), REPO_METADATA_LIMIT,
+    )
+    if metadata is None:
+        raise CardReadHold("CARD_SOURCE_UNVERIFIED")
     try:
-        with opener.open(req, timeout=15) as r:
-            raw = r.read(1_000_001)
-        return raw.decode('utf-8') if len(raw) <= 1_000_000 else None
-    except urllib.error.HTTPError as exc:
-        if exc.code != 404:
-            return None
-        # A 404 may mean no README, no repository, or a visibility failure.
-        # Refuse to compose a fresh card until exact repo identity is observed.
-        api_type = {'model': 'models', 'dataset': 'datasets'}[repo_type]
-        endpoint = 'https://huggingface.co/api/%s/%s' % (api_type, repo_id)
-        check = urllib.request.Request(endpoint, headers=_read_headers())
-        try:
-            with opener.open(check, timeout=15) as response:
-                raw = response.read(131_073)
-            if len(raw) > 131_072:
-                return None
-            metadata = json.loads(raw)
-            if isinstance(metadata, dict) and metadata.get('id') == repo_id:
-                return ''  # Proven repository exists; README was absent.
-        except (ValueError, UnicodeError, OSError, urllib.error.URLError):
-            return None
-        return None
-    except (ValueError, UnicodeError, OSError, urllib.error.URLError):
-        return None
+        identity = json.loads(metadata)
+    except (ValueError, RecursionError):
+        raise CardReadHold("CARD_SOURCE_UNVERIFIED") from None
+    if not isinstance(identity, dict) or identity.get('id') != repo_id:
+        raise CardReadHold("CARD_SOURCE_UNVERIFIED")
+    return ''
 
 
 def _badge(label, value, color):
@@ -101,7 +131,9 @@ def evidence_charts(audit, repo_id):
     """Return dict {asset_name: svg} of honest charts for this repo, from audit data only."""
     out = {}
     # org context donut for every card (small, honest)
-    m = audit['hf_models']['total']; d = audit['hf_datasets']['total']; s = audit['hf_spaces']['total']
+    m = audit['hf_models']['total']
+    d = audit['hf_datasets']['total']
+    s = audit['hf_spaces']['total']
     out['org-context.svg'] = charts.donut(
         [('models', m), ('datasets', d), ('spaces', s)], title='Estate artifacts (MEASURED %s)' % audit['generated_at'])
     # mesh receipts timeline facts if present
@@ -118,7 +150,6 @@ def evidence_charts(audit, repo_id):
 
 
 def model_card(repo_id, audit, meta_extra=None):
-    ts = now()
     charts_assets = evidence_charts(audit, repo_id)
     kind = 'model'
     src = policy.source_for(repo_id)
@@ -136,9 +167,18 @@ def model_card(repo_id, audit, meta_extra=None):
     body.append('- **Repo:** [%s](https://huggingface.co/%s)' % (repo_id, repo_id))
     body.append('- **Canonical source:** [%s](%s)' % (src.split('/')[-1] if '/szl-holdings/' in src else 'szl-holdings org', src))
     body.append('- **Kind:** model repository; weight and evaluation qualification NOT VERIFIED by this card')
-    if meta_extra:
-        for k, v in meta_extra.items():
-            body.append('- **%s:** %s' % (k, v))
+    body.append('- **Repository kind:** model namespace (not independent training evidence)')
+    body.append('- **Training / held-out evaluation:** UNKNOWN for this artifact; a namespace is not a checkpoint receipt.')
+    body.append('- **Artifact rights and weights:** NOT_REVIEWED by this showcase. Verify original licenses, lineage and pinned model cards separately.')
+    if meta_extra is not None:
+        if type(meta_extra) is not dict or not set(meta_extra).issubset(MODEL_META_KEYS):
+            raise CardReadHold("MODEL_METADATA_UNREVIEWED_FIELDS")
+        for key in sorted(meta_extra):
+            value = meta_extra[key]
+            if (type(value) is not str or not 1 <= len(value) <= 120
+                    or any(ord(ch) < 32 or ord(ch) == 127 or ch in "<>" for ch in value)):
+                raise CardReadHold("MODEL_METADATA_INVALID_VALUE")
+            body.append('- **Declared %s (unverified):** %s' % (key, html.escape(value, quote=True)))
     body.append('')
     body.append('## Evidence')
     body.append('')
@@ -158,18 +198,21 @@ def model_card(repo_id, audit, meta_extra=None):
 
 
 def dataset_card(repo_id, audit, purpose=None):
-    ts = now()
     charts_assets = evidence_charts(audit, repo_id)
     src = policy.source_for(repo_id)
     name = repo_id.split('/')[-1]
     body = []
     body.append('# %s' % name.replace('-', ' '))
     body.append('')
-    body.append('A receipt-bearing dataset of the [SZL Holdings](https://huggingface.co/SZLHOLDINGS) estate: '
-                'every artifact family carries its dated audit and source links.')
+    body.append('A dataset repository indexed in the [SZL Holdings](https://huggingface.co/SZLHOLDINGS) estate. '
+                'Organization charts are dated context, not independent dataset-lineage receipts.')
     body.append('')
-    if purpose:
-        body.append(purpose)
+    if purpose is not None:
+        if type(purpose) is not str or len(purpose) > 512 or any(
+            ord(ch) < 32 or ord(ch) == 127 for ch in purpose
+        ):
+            raise CardReadHold("DATASET_PURPOSE_INVALID")
+        body.append('**Declared purpose (unverified):** ' + html.escape(purpose, quote=True))
         body.append('')
     body.append('- **Repo:** [%s](https://huggingface.co/%s)' % (repo_id, repo_id))
     body.append('- **Canonical source:** %s' % src)
