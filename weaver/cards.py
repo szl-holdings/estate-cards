@@ -9,6 +9,8 @@ Rules (estate doctrine):
 import datetime
 import hashlib
 import html
+import http.client
+import json
 import os
 import re
 import urllib.error
@@ -18,8 +20,9 @@ from weaver import charts, policy
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CARD_MARK = '<!-- szl:showcase-card v1'
-README_LIMIT = 1_048_576
-PUBLIC_REPO = re.compile(r"^SZLHOLDINGS/[A-Za-z0-9_.-]{1,128}$")
+README_LIMIT = 1_000_000
+REPO_METADATA_LIMIT = 131_072
+PUBLIC_REPO = re.compile(r"SZLHOLDINGS/[A-Za-z0-9][A-Za-z0-9_.-]{0,115}")
 MODEL_META_KEYS = frozenset({"architecture", "parameters", "pipeline_tag", "source_revision"})
 
 
@@ -28,13 +31,8 @@ class CardReadHold(RuntimeError):
 
 
 def _auth_headers():
-    # Read the existing publishing credential only during a verified live read,
-    # never at module import time or in offline card rendering/tests.
-    try:
-        with open('C:/Users/steph/.cache/huggingface/token', encoding='utf-8') as stream:
-            token = stream.read().strip()
-    except OSError:
-        raise CardReadHold("CARD_AUTH_UNAVAILABLE") from None
+    token = (os.environ.get("SZL_HF_CARD_READ_TOKEN", "").strip()
+             or os.environ.get("SZL_HF_CARD_PUBLISH_TOKEN", "").strip())
     if not token:
         raise CardReadHold("CARD_AUTH_UNAVAILABLE")
     return {'Authorization': 'Bearer ' + token}
@@ -57,38 +55,24 @@ _READ_OPENER = urllib.request.build_opener(
 )
 
 
-def fetch_readme(repo_id, repo_type):
-    """Return None only for a real HTTP 404; all other missing reads HOLD.
-
-    The publisher must not overwrite a curated card merely because an auth,
-    quota, connection, body or encoding error was mistaken for "no README".
-    Source-sealed assets require an additional owner/manifest guard upstream.
-    """
-    # Model pages are at /ORG/name, NOT /models/ORG/name: the latter returns
-    # a deceptive 404 for existing curated cards and can trigger replacement.
-    prefixes = {'model': '', 'dataset': 'datasets/', 'space': 'spaces/'}
-    if repo_type not in prefixes or type(repo_id) is not str or not PUBLIC_REPO.fullmatch(repo_id):
-        raise CardReadHold("CARD_SOURCE_ID_INVALID")
-    url = 'https://huggingface.co/' + prefixes[repo_type] + repo_id + '/raw/main/README.md'
-    req = urllib.request.Request(url, headers=_auth_headers())
+def _bounded_get(url, headers, allowed_types, limit):
+    req = urllib.request.Request(url, headers=headers)
     try:
         with _READ_OPENER.open(req, timeout=30) as response:
             if response.status != 200:
                 raise CardReadHold("CARD_READ_HTTP_NON_200")
-            content_type = response.headers.get("Content-Type", "").lower()
-            if not any(content_type.startswith(kind) for kind in (
-                "text/plain", "text/markdown", "application/octet-stream",
-            )):
+            content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if content_type not in allowed_types:
                 raise CardReadHold("CARD_READ_CONTENT_TYPE_INVALID")
-            raw = response.read(README_LIMIT + 1)
+            raw = response.read(limit + 1)
     except urllib.error.HTTPError as error:
         error.close()
         if error.code == 404:
             return None
         raise CardReadHold("CARD_READ_UNAVAILABLE") from None
-    except (OSError, TimeoutError):
+    except (OSError, http.client.HTTPException):
         raise CardReadHold("CARD_READ_UNAVAILABLE") from None
-    if len(raw) > README_LIMIT:
+    if len(raw) > limit:
         raise CardReadHold("CARD_READ_TOO_LARGE")
     if not raw:
         raise CardReadHold("CARD_READ_EMPTY")
@@ -96,6 +80,37 @@ def fetch_readme(repo_id, repo_type):
         return raw.decode("utf-8", errors="strict")
     except UnicodeError:
         raise CardReadHold("CARD_READ_NOT_UTF8") from None
+
+
+def fetch_readme(repo_id, repo_type):
+    """Return README text or an empty string after verifying repository identity."""
+    prefixes = {'model': '', 'dataset': 'datasets/'}
+    if repo_type not in ('model', 'dataset') or type(repo_id) is not str or not PUBLIC_REPO.fullmatch(repo_id):
+        raise CardReadHold("CARD_SOURCE_ID_INVALID")
+
+    origin = 'https://huggingface.co/'
+    headers = _auth_headers()
+    url = origin + prefixes[repo_type] + repo_id + '/raw/main/README.md'
+    current = _bounded_get(url, headers, (
+        "text/plain", "text/markdown", "application/octet-stream",
+    ), README_LIMIT)
+    if current is not None:
+        return current
+
+    api_type = {'model': 'models', 'dataset': 'datasets'}[repo_type]
+    metadata = _bounded_get(
+        origin + 'api/' + api_type + '/' + repo_id,
+        headers, ("application/json",), REPO_METADATA_LIMIT,
+    )
+    if metadata is None:
+        raise CardReadHold("CARD_SOURCE_UNVERIFIED")
+    try:
+        identity = json.loads(metadata)
+    except (ValueError, RecursionError):
+        raise CardReadHold("CARD_SOURCE_UNVERIFIED") from None
+    if not isinstance(identity, dict) or identity.get('id') != repo_id:
+        raise CardReadHold("CARD_SOURCE_UNVERIFIED")
+    return ''
 
 
 def _badge(label, value, color):
@@ -151,6 +166,7 @@ def model_card(repo_id, audit, meta_extra=None):
     body.append('')
     body.append('- **Repo:** [%s](https://huggingface.co/%s)' % (repo_id, repo_id))
     body.append('- **Canonical source:** [%s](%s)' % (src.split('/')[-1] if '/szl-holdings/' in src else 'szl-holdings org', src))
+    body.append('- **Kind:** model repository; weight and evaluation qualification NOT VERIFIED by this card')
     body.append('- **Repository kind:** model namespace (not independent training evidence)')
     body.append('- **Training / held-out evaluation:** UNKNOWN for this artifact; a namespace is not a checkpoint receipt.')
     body.append('- **Artifact rights and weights:** NOT_REVIEWED by this showcase. Verify original licenses, lineage and pinned model cards separately.')
@@ -228,9 +244,15 @@ def build_card(kind, repo_id, audit, current_readme, purpose=None, meta_extra=No
         # strip the duplicated top title from the appended copy
         return out, assets, 'append'
     if current_readme and CARD_MARK in current_readme:
-        # replace previous showcase section between markers
-        pre = current_readme.split(CARD_MARK)[0].rstrip()
-        return pre + '\n\n---\n\n## SZL estate showcase card\n\n' + fresh + '\n' + footer, assets, 'replace-marked'
+        # Replace exactly one managed section. Never accumulate duplicates or
+        # erase unmarked authored material under an unexpected marker shape.
+        heading = '\n\n---\n\n## SZL estate showcase card\n\n'
+        if current_readme.count(heading) != 1 or current_readme.count(CARD_MARK) != 1:
+            raise ValueError('SOURCE_CARD_SECTION_UNBOUND')
+        if current_readme.index(heading) > current_readme.index(CARD_MARK):
+            raise ValueError('SOURCE_CARD_SECTION_UNBOUND')
+        pre = current_readme.split(heading, 1)[0].rstrip()
+        return pre + '\n' + heading + fresh + '\n' + footer, assets, 'replace-marked'
     # no real README: compose fresh (preserve YAML front-matter if any)
     fm = ''
     if current_readme and current_readme.lstrip().startswith('---'):

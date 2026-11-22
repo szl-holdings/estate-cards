@@ -71,11 +71,12 @@ class CardTruthTest(unittest.TestCase):
         self.assertTrue(body.startswith(existing.rstrip()))
         self.assertIn("SZL estate showcase card", body)
 
-    def test_only_verified_http_404_means_missing_readme(self):
+    def test_http_404_without_metadata_proof_stays_held(self):
         error = urllib.error.HTTPError("https://huggingface.co/test", 404, "not found", {}, None)
-        with patch.object(cards, "_auth_headers", return_value={"Authorization": "Bearer test"}), \
+        with patch.object(cards, "_auth_headers", return_value={"Authorization": "Bearer synthetic"}), \
              patch.object(cards._READ_OPENER, "open", side_effect=error):
-            self.assertIsNone(cards.fetch_readme("SZLHOLDINGS/example", "space"))
+            with self.assertRaisesRegex(cards.CardReadHold, "CARD_SOURCE_UNVERIFIED"):
+                cards.fetch_readme("SZLHOLDINGS/example", "model")
 
     def test_upstream_rejection_never_becomes_compose_permission(self):
         for code in (401, 403, 429, 503):
@@ -156,23 +157,23 @@ class CardCanonicalRoutesTest(unittest.TestCase):
             ["https://huggingface.co/SZLHOLDINGS/SZL-Khipu-Yachay-Nano/raw/main/README.md"],
         )
 
-    def test_dataset_and_space_routes_remain_distinct(self):
-        for kind, expected in (
-            ("dataset", "https://huggingface.co/datasets/SZLHOLDINGS/example/raw/main/README.md"),
-            ("space", "https://huggingface.co/spaces/SZLHOLDINGS/example/raw/main/README.md"),
+    def test_dataset_uses_specific_route_and_space_direct_read_is_denied(self):
+        called = []
+
+        def fake_open(request, timeout):
+            called.append(request.full_url)
+            return Response()
+
+        with (
+            patch.object(cards, "_auth_headers", return_value={"Authorization": "Bearer synthetic"}),
+            patch.object(cards._READ_OPENER, "open", side_effect=fake_open),
         ):
-            called = []
-
-            def fake_open(request, timeout):
-                called.append(request.full_url)
-                return Response()
-
-            with (
-                patch.object(cards, "_auth_headers", return_value={"Authorization": "Bearer synthetic"}),
-                patch.object(cards._READ_OPENER, "open", side_effect=fake_open),
-            ):
-                self.assertTrue(cards.fetch_readme("SZLHOLDINGS/example", kind))
-            self.assertEqual(called, [expected])
+            self.assertTrue(cards.fetch_readme("SZLHOLDINGS/example", "dataset"))
+            with self.assertRaisesRegex(cards.CardReadHold, "CARD_SOURCE_ID_INVALID"):
+                cards.fetch_readme("SZLHOLDINGS/example", "space")
+        self.assertEqual(called, [
+            "https://huggingface.co/datasets/SZLHOLDINGS/example/raw/main/README.md"
+        ])
 
 
 if __name__ == "__main__":

@@ -9,7 +9,6 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
-import os
 import time
 import urllib.request
 import urllib.error
@@ -23,8 +22,25 @@ Q = os.path.join(ROOT, 'queue.jsonl')
 RCPT = os.path.join(ROOT, 'rollout_receipts.jsonl')
 STATE = os.path.join(ROOT, 'rollout_state.json')
 STOP = os.path.join(ROOT, 'STOP')
-TOKEN = open('C:/Users/steph/.cache/huggingface/token', encoding='utf-8').read().strip()
-COMMIT_EP = 'https://huggingface.co/api/datasets/%s/commit/main'
+
+
+def _publisher_token():
+    # Explicit owner-supplied credential only; never scrape a workstation token file.
+    token = os.environ.get("SZL_HF_CARD_PUBLISH_TOKEN", "").strip()
+    if not token:
+        raise RuntimeError("EXPLICIT_CARD_PUBLISH_TOKEN_REQUIRED")
+    return token
+
+def _target_admitted(repo_id, kind):
+    # A queue entry, a publish credential and a global --apply are not approval.
+    # A separately injected exact target scopes a single operator-reviewed run.
+    return os.environ.get("SZL_HF_CARD_APPROVED_TARGET", "").strip() == f"{kind}:{repo_id}"
+
+
+_COMMIT_OPENER = urllib.request.build_opener(
+    urllib.request.ProxyHandler({}),
+    cardbox._NoRedirect(),
+)
 
 
 def now():
@@ -37,22 +53,38 @@ def log(rec):
         f.write(json.dumps(rec, ensure_ascii=False) + chr(10))
 
 
-def ndjson_commit(repo_id, kind, files):
+def ndjson_commit(repo_id, kind, files, *, approved=False):
+    # A Space README may be listed in SOURCE.json. Editing it outside the canonical
+    # GitHub -> HF source publisher can make the running container fail at import.
+    if kind == "space":
+        return 403, "SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED"
+    if kind not in ("model", "dataset"):
+        return 403, "INVALID_REPOSITORY_KIND"
+    if not isinstance(repo_id, str) or not cardbox.PUBLIC_REPO.fullmatch(repo_id):
+        return 403, "INVALID_REPOSITORY"
+    if policy.source_managed(kind, repo_id):
+        return 403, "SOURCE_OWNED_REPOSITORY_PUBLISHER_REQUIRED"
+    if not approved or not _target_admitted(repo_id, kind):
+        return 403, "EXPLICIT_OWNER_CARD_ADMISSION_REQUIRED"
+
     base_ep = 'https://huggingface.co/api/%s/%s/commit/main' % (
-        {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}[kind], repo_id)
+        {'model': 'models', 'dataset': 'datasets'}[kind], repo_id)
     nd = json.dumps({'key': 'header', 'value': {'summary': 'SZL estate showcase card (weaver v0.1.0, deterministic SVG charts)',
                                                 'description': 'Source: github.com/szl-holdings/estate-cards. Receipt-honest append/refresh.'}})
     for path, content in files:
         nd += chr(10) + json.dumps({'key': 'file', 'value': {'path': path, 'content': content}},
                                    ensure_ascii=False)
     body = nd.encode('utf-8')
+    token = _publisher_token()
     for attempt in range(6):
         try:
             req = urllib.request.Request(base_ep, data=body, method='POST',
-                                         headers={'Authorization': 'Bearer ' + TOKEN,
+                                         headers={'Authorization': 'Bearer ' + token,
                                                   'Content-Type': 'application/x-ndjson'})
-            with urllib.request.urlopen(req, timeout=180) as r:
+            with _COMMIT_OPENER.open(req, timeout=180) as r:
                 return r.status, r.read().decode('utf-8')[:300]
+        except cardbox.CardReadHold:
+            return 0, 'CARD_COMMIT_REDIRECT_REFUSED'
         except urllib.error.HTTPError as e:
             detail = e.read().decode('utf-8')[:200]
             if e.code == 429:
@@ -72,40 +104,82 @@ def load_state():
     return {'done': []}
 
 
-def main():
+def main(argv=None):
+    args = sys.argv[1:] if argv is None else list(argv)
+    if not args:
+        apply, approved_repo = False, None
+    elif len(args) == 3 and args[:2] == ["--apply", "--repo"]:
+        apply, approved_repo = True, args[2]
+        # One immutable repository selector, never an entire queued estate.
+        if not isinstance(approved_repo, str) or not cardbox.PUBLIC_REPO.fullmatch(approved_repo):
+            raise ValueError("USAGE: invalid exact --repo target")
+    else:
+        raise ValueError("USAGE: rollout_hf.py [--apply --repo SZLHOLDINGS/NAME]")
+
     if not os.path.exists(Q):
         print('NO_QUEUE', flush=True)
         return
-    audit = json.load(open(os.path.join(ROOT, 'data', 'audit-latest.json'), encoding='utf-8'))
+    with open(os.path.join(ROOT, 'data', 'audit-latest.json'), encoding='utf-8') as audit_file:
+        audit = json.load(audit_file)
     st = load_state()
     done = set(st['done'])
     with open(Q, encoding='utf-8') as f:
         items = [json.loads(l) for l in f if l.strip()]
+    if apply and sum(isinstance(item, dict) and item.get("repo") == approved_repo for item in items) != 1:
+        raise ValueError("EXPLICIT_APPROVED_REPOSITORY_MISSING_OR_DUPLICATE")
     print('QUEUE', len(items), 'done', len(done), flush=True)
     for item in items:
+        # Never touch unrelated queue rows, even if an operator supplied a token.
+        if apply and item.get("repo") != approved_repo:
+            continue
         if os.path.exists(STOP):
             print('STOP_FILE', flush=True); break
-        repo = item['repo']; kind = item['kind']
+        repo = item.get('repo')
+        kind = item.get('kind')
+        if not isinstance(repo, str) or not cardbox.PUBLIC_REPO.fullmatch(repo):
+            log({'repo': str(repo)[:128], 'kind': kind, 'decision': 'INVALID_REPOSITORY', 'ok': False})
+            continue
+        if kind not in ('space', 'model', 'dataset'):
+            log({'repo': repo, 'kind': kind, 'decision': 'INVALID_REPOSITORY_KIND', 'ok': False})
+            continue
         if policy.source_managed(kind, repo):
             log({'repo': repo, 'kind': kind, 'status': 'skipped_source_managed'})
             continue
+        if kind == 'space':
+            log({'repo': repo, 'kind': kind, 'decision': 'SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED', 'ok': False})
+            print('SKIP_SOURCE_OWNED_SPACE', repo, flush=True)
+            continue
         if repo in done:
             continue
+        if not apply:
+            log({'repo': repo, 'kind': kind, 'decision': 'DRY_RUN_REVIEW_REQUIRED', 'ok': False})
+            continue
+        if not _target_admitted(repo, kind):
+            log({'repo': repo, 'kind': kind, 'decision': 'EXPLICIT_OWNER_CARD_ADMISSION_REQUIRED', 'ok': False})
+            print('HOLD_NO_PER_REPOSITORY_ADMISSION', flush=True)
+            break
+        if not os.environ.get('SZL_HF_CARD_PUBLISH_TOKEN', '').strip():
+            log({'repo': repo, 'kind': kind, 'decision': 'EXPLICIT_CARD_PUBLISH_TOKEN_REQUIRED', 'ok': False})
+            print('HOLD_NO_EXPLICIT_PUBLISH_TOKEN', flush=True)
+            break
         try:
             cur = cardbox.fetch_readme(repo, kind)
+            if cur is None:
+                raise cardbox.CardReadHold('README_READ_UNAVAILABLE_FAIL_CLOSED')
             content, assets, mode = cardbox.build_card(kind, repo, audit, cur,
                                                         item.get('purpose'), item.get('meta_extra'))
             files = [('README.md', content)]
             for aname, svg in assets.items():
                 files.append(('assets/szl-card/' + aname, svg))
-            status, detail = ndjson_commit(repo, kind, files)
+            status, detail = ndjson_commit(repo, kind, files, approved=apply)
             ok = status == 200
             log({'repo': repo, 'kind': kind, 'mode': mode, 'commit_status': status,
                  'ok': ok, 'detail': detail[:160] if not ok else ''})
             print('ROLL', repo, mode, status, flush=True)
             if ok:
                 done.add(repo)
-                json.dump({'done': sorted(done)}, open(STATE, 'w', encoding='utf-8'))
+                with open(STATE, 'w', encoding='utf-8') as state_file:
+                    json.dump({'done': sorted(done)}, state_file)
             time.sleep(14)
         except Exception as e:
             log({'repo': repo, 'ok': False, 'err': repr(e)[:300]})
