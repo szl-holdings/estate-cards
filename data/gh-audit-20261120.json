@@ -1,0 +1,1076 @@
+{
+ "generated_at": "2026-11-23T23:25:11Z",
+ "label": "MEASURED_SUBSET (131/159 active repos; 28 rate-limit-queued)",
+ "source": "gh api repos/szl-holdings/{name} via sandbox census",
+ "repos": [
+  {
+   "desc": true,
+   "lic": true,
+   "name": "YARQA-ATTN",
+   "pushed": "2026-11-23T14:51:16Z",
+   "stars": 0,
+   "topics": 9
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "a11oy",
+   "pushed": "2026-11-23T23:18:05Z",
+   "stars": 1,
+   "topics": 15
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "a11oy-factory",
+   "pushed": "2026-11-23T14:47:13Z",
+   "stars": 0,
+   "topics": 5
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "a11oy-net",
+   "pushed": "2026-11-23T13:10:20Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "agents-studio",
+   "pushed": "2026-11-23T14:49:10Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "aifor-science-protocol",
+   "pushed": "2026-11-23T03:05:16Z",
+   "stars": 0,
+   "topics": 14
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "alloyscape-estate-backup",
+   "pushed": "2026-11-19T23:37:17Z",
+   "stars": 0,
+   "topics": 4
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "alloyscape-sandbox-artifex",
+   "pushed": "2026-11-15T05:20:30Z",
+   "stars": 0,
+   "topics": 5
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "alloyscape-sandbox-pliny",
+   "pushed": "2026-11-15T05:20:40Z",
+   "stars": 0,
+   "topics": 5
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "amaru",
+   "pushed": "2026-11-23T02:29:22Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "anatomy",
+   "pushed": "2026-11-23T23:21:49Z",
+   "stars": 2,
+   "topics": 11
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "ayllu",
+   "pushed": "2026-11-23T15:17:53Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "ayllu-hf-space",
+   "pushed": "2026-11-22T23:03:15Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "ci-witness-action",
+   "pushed": "2026-11-23T02:27:08Z",
+   "stars": 0,
+   "topics": 10
+  },
+  {
+   "desc": true,
+   "lic": false,
+   "name": "conformance-corpus",
+   "pushed": "2026-11-20T03:51:48Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "curation-atlas",
+   "pushed": "2026-11-23T23:13:47Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "david-leads",
+   "pushed": "2026-11-23T14:57:14Z",
+   "stars": 0,
+   "topics": 10
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "estate-cards",
+   "pushed": "2026-11-23T23:14:24Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "evidence-doctrine",
+   "pushed": "2026-11-15T06:37:37Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "evidence-studio",
+   "pushed": "2026-11-18T07:49:01Z",
+   "stars": 1,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "formal-ai-underwriting",
+   "pushed": "2026-11-22T22:31:05Z",
+   "stars": 0,
+   "topics": 15
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "frontier-54-runs",
+   "pushed": "2026-11-23T04:30:35Z",
+   "stars": 0,
+   "topics": 5
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "frontier-55-runs",
+   "pushed": "2026-11-23T23:11:35Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "frontier-bench",
+   "pushed": "2026-11-23T13:09:42Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "frontier-console",
+   "pushed": "2026-11-23T23:11:54Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "gdw-frontier",
+   "pushed": "2026-11-23T13:10:28Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "governed-receipt-spec",
+   "pushed": "2026-11-23T14:52:11Z",
+   "stars": 1,
+   "topics": 9
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "hatun-mcp",
+   "pushed": "2026-11-23T23:23:49Z",
+   "stars": 1,
+   "topics": 12
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "khipu-consensus",
+   "pushed": "2026-11-23T14:59:33Z",
+   "stars": 0,
+   "topics": 18
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "khipu-sda-core",
+   "pushed": "2026-11-23T15:01:51Z",
+   "stars": 0,
+   "topics": 12
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "khipu-x1",
+   "pushed": "2026-11-17T19:45:03Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "killinchu",
+   "pushed": "2026-11-23T23:15:32Z",
+   "stars": 0,
+   "topics": 18
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "lean-rlvr-proving-ground",
+   "pushed": "2026-11-23T06:25:48Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "lutar-lean",
+   "pushed": "2026-11-23T15:44:35Z",
+   "stars": 0,
+   "topics": 20
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "lyte-lattice",
+   "pushed": "2026-11-23T13:12:28Z",
+   "stars": 0,
+   "topics": 9
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "lyte-services",
+   "pushed": "2026-11-23T23:20:36Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "nexus",
+   "pushed": "2026-11-23T23:23:02Z",
+   "stars": 1,
+   "topics": 13
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "pitch-collateral",
+   "pushed": "2026-11-15T05:30:30Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "platform",
+   "pushed": "2026-11-23T23:04:13Z",
+   "stars": 0,
+   "topics": 19
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "puriq-live",
+   "pushed": "2026-11-23T15:11:00Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "puzzle-frontier",
+   "pushed": "2026-11-23T13:59:16Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "quant-curve",
+   "pushed": "2026-11-23T13:12:45Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "registry-mirror",
+   "pushed": "2026-11-15T07:57:08Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "release-gate-fixture",
+   "pushed": "2026-11-15T05:31:38Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "retrieval-bench",
+   "pushed": "2026-11-23T14:52:26Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "rosie",
+   "pushed": "2026-11-23T00:02:47Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "scientific-evidence-gate",
+   "pushed": "2026-11-17T09:26:42Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "sda",
+   "pushed": "2026-11-23T15:24:43Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "sentra",
+   "pushed": "2026-11-23T00:03:07Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-abstention-frontier",
+   "pushed": "2026-11-23T02:27:52Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-acoustic-research",
+   "pushed": "2026-11-15T05:32:40Z",
+   "stars": 0,
+   "topics": 5
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-atelier",
+   "pushed": "2026-11-23T23:21:16Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-block-kv",
+   "pushed": "2026-11-23T14:56:00Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-blocked",
+   "pushed": "2026-11-23T15:12:09Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-brand",
+   "pushed": "2026-11-23T14:49:26Z",
+   "stars": 0,
+   "topics": 14
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-build-env",
+   "pushed": "2026-11-23T00:30:36Z",
+   "stars": 0,
+   "topics": 11
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-calibration",
+   "pushed": "2026-11-23T14:53:37Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-ci-witness",
+   "pushed": "2026-11-23T15:20:09Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-command-center",
+   "pushed": "2026-11-23T18:43:57Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-command-lab",
+   "pushed": "2026-11-23T15:09:25Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-constellation",
+   "pushed": "2026-11-23T15:14:27Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-cram",
+   "pushed": "2026-11-23T13:33:04Z",
+   "stars": 0,
+   "topics": 3
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-data-core",
+   "pushed": "2026-11-23T01:13:46Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-defensive-control-plane",
+   "pushed": "2026-11-23T05:58:57Z",
+   "stars": 0,
+   "topics": 9
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-doctrine",
+   "pushed": "2026-11-23T13:07:32Z",
+   "stars": 0,
+   "topics": 10
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-drift",
+   "pushed": "2026-11-16T12:34:27Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-eclipse",
+   "pushed": "2026-11-17T03:24:20Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-energy-mcp",
+   "pushed": "2026-11-23T14:57:07Z",
+   "stars": 0,
+   "topics": 5
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-engine-bench",
+   "pushed": "2026-11-20T05:34:48Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-estate-os",
+   "pushed": "2026-11-23T13:10:47Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-evidence-core",
+   "pushed": "2026-11-23T06:17:14Z",
+   "stars": 2,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-evidence-litellm",
+   "pushed": "2026-11-19T18:36:18Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-evidence-mandate",
+   "pushed": "2026-11-23T13:14:19Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-forge",
+   "pushed": "2026-11-23T13:14:16Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-formulas",
+   "pushed": "2026-11-23T18:44:29Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-frontier",
+   "pushed": "2026-11-23T13:12:15Z",
+   "stars": 1,
+   "topics": 10
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-gov",
+   "pushed": "2026-11-23T14:52:05Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-govsign",
+   "pushed": "2026-11-23T15:13:17Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-gpu-bridge",
+   "pushed": "2026-11-23T14:48:55Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-guardrail-receipt",
+   "pushed": "2026-11-16T06:16:56Z",
+   "stars": 1,
+   "topics": 9
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-hf-frontier",
+   "pushed": "2026-11-23T15:09:14Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-holdings.github.io",
+   "pushed": "2026-11-23T15:23:32Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-humanitarian-causal-twin",
+   "pushed": "2026-11-20T21:35:22Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-inference-gateway",
+   "pushed": "2026-11-23T02:04:24Z",
+   "stars": 0,
+   "topics": 16
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-invariants",
+   "pushed": "2026-11-23T18:44:24Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-kernel-attest",
+   "pushed": "2026-11-23T13:38:21Z",
+   "stars": 0,
+   "topics": 4
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-kernels",
+   "pushed": "2026-11-23T16:42:15Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-khipu",
+   "pushed": "2026-11-23T13:14:16Z",
+   "stars": 1,
+   "topics": 10
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-khipu-scholar",
+   "pushed": "2026-11-19T20:18:33Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-lake",
+   "pushed": "2026-11-23T18:48:37Z",
+   "stars": 0,
+   "topics": 14
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-maskmod",
+   "pushed": "2026-11-16T05:24:48Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-microscopy-pilot",
+   "pushed": "2026-11-23T14:34:52Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-muhu-frontier",
+   "pushed": "2026-11-23T11:08:26Z",
+   "stars": 0,
+   "topics": 4
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-openshell-receipts",
+   "pushed": "2026-11-19T23:31:28Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-ops-runbook",
+   "pushed": "2026-11-23T04:30:32Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-org-health",
+   "pushed": "2026-11-23T15:23:45Z",
+   "stars": 0,
+   "topics": 10
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-ouroboros",
+   "pushed": "2026-11-23T23:22:37Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-pin",
+   "pushed": "2026-11-16T06:18:15Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-platform",
+   "pushed": "2026-11-23T14:41:59Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-portal",
+   "pushed": "2026-11-23T04:42:18Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-quant",
+   "pushed": "2026-11-23T18:27:35Z",
+   "stars": 0,
+   "topics": 10
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-quant-bench",
+   "pushed": "2026-11-23T14:54:49Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-quant-witness",
+   "pushed": "2026-11-23T20:16:27Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-real-estate",
+   "pushed": "2026-11-23T15:22:24Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-receipt",
+   "pushed": "2026-11-23T15:06:29Z",
+   "stars": 0,
+   "topics": 10
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-receipt-attn",
+   "pushed": "2026-11-19T18:51:41Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-repo-template",
+   "pushed": "2026-11-23T02:15:49Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-retrieval-bench",
+   "pushed": "2026-11-23T05:01:34Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-router",
+   "pushed": "2026-11-23T13:24:35Z",
+   "stars": 0,
+   "topics": 9
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-runbook-catalog",
+   "pushed": "2026-11-23T13:35:06Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-science-forum-corpus",
+   "pushed": "2026-11-22T22:30:58Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-second-brain",
+   "pushed": "2026-11-23T15:15:35Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-serve",
+   "pushed": "2026-11-23T13:40:43Z",
+   "stars": 0,
+   "topics": 8
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-showcase",
+   "pushed": "2026-11-20T04:03:23Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-skills",
+   "pushed": "2026-11-17T04:53:05Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-sovereign-os",
+   "pushed": "2026-11-20T11:10:51Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-specdecode",
+   "pushed": "2026-11-23T02:36:09Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-substrate",
+   "pushed": "2026-11-23T18:44:18Z",
+   "stars": 0,
+   "topics": 13
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-trust",
+   "pushed": "2026-11-23T05:58:34Z",
+   "stars": 0,
+   "topics": 14
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-typesafe-triage",
+   "pushed": "2026-11-23T12:02:17Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-v14",
+   "pushed": "2026-11-15T06:38:21Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-vertical-forge",
+   "pushed": "2026-11-22T22:31:16Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": false,
+   "name": "szl-vertical-portal",
+   "pushed": "2026-11-21T22:46:26Z",
+   "stars": 0,
+   "topics": 0
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szl-wave1-report",
+   "pushed": "2026-11-15T08:03:55Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "szlholdings.com",
+   "pushed": "2026-11-17T20:11:40Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "the-grid",
+   "pushed": "2026-11-23T15:09:52Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "uds-bundles",
+   "pushed": "2026-11-23T13:10:05Z",
+   "stars": 0,
+   "topics": 17
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "vertical-services",
+   "pushed": "2026-11-23T23:21:34Z",
+   "stars": 0,
+   "topics": 7
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "vgl-cold-replay",
+   "pushed": "2026-11-20T21:35:09Z",
+   "stars": 0,
+   "topics": 6
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "vsp-otel",
+   "pushed": "2026-11-23T15:08:45Z",
+   "stars": 0,
+   "topics": 18
+  },
+  {
+   "desc": true,
+   "lic": true,
+   "name": "yarqa",
+   "pushed": "2026-11-23T15:03:01Z",
+   "stars": 0,
+   "topics": 11
+  }
+ ],
+ "findings": {
+  "missing_description": [],
+  "missing_license": [
+   "conformance-corpus",
+   "szl-vertical-portal"
+  ],
+  "missing_topics": [
+   "amaru",
+   "estate-cards",
+   "frontier-55-runs",
+   "frontier-console",
+   "puzzle-frontier",
+   "rosie",
+   "sentra",
+   "szl-abstention-frontier",
+   "szl-humanitarian-causal-twin",
+   "szl-khipu-scholar",
+   "szl-portal",
+   "szl-vertical-portal"
+  ]
+ }
+}
