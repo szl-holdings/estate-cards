@@ -28,8 +28,10 @@ class Response:
 
 class SourceGuardTests(unittest.TestCase):
     def test_static_immutable_target_never_networks(self):
-        with self.assertRaisesRegex(guard.Hold, "IMMUTABLE_SOURCE_OWNER"):
-            guard.check(PROTECTED, "space", fetch=lambda url: self.fail("network"))
+        for repo in (PROTECTED, "SZLHOLDINGS/szl-model-inference-lab"):
+            with self.subTest(repo=repo):
+                with self.assertRaisesRegex(guard.Hold, "IMMUTABLE_SOURCE_OWNER"):
+                    guard.check(repo, "space", fetch=lambda url: self.fail("network"))
 
     def test_source_json_blocks_showcase_writer(self):
         def with_source(url):
@@ -38,6 +40,18 @@ class SourceGuardTests(unittest.TestCase):
             return [{"path": ".gitattributes"}, {"path": "README.md"}, {"path": "SOURCE.json"}]
         with self.assertRaisesRegex(guard.Hold, "SOURCE_MANIFEST"):
             guard.check(SAFE, "space", fetch=with_source)
+
+    def test_release_json_seal_blocks_showcase_writer(self):
+        # A Space may have release.json instead of SOURCE.json. Its runtime
+        # validates README.md bytes against the release manifest at startup.
+        def with_release(url):
+            if "/revision/HEAD" in url:
+                return {"sha": SHA, "private": False}
+            return [{"path": "README.md"}, {"path": "release.json"}]
+        for kind in ("space", "model", "dataset"):
+            with self.subTest(kind=kind):
+                with self.assertRaisesRegex(guard.Hold, "RELEASE_MANIFEST_GOVERNS_README"):
+                    guard.check(SAFE, kind, fetch=with_release)
 
     def test_clean_metadata_binds_cas_parent(self):
         requests = []
