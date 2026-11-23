@@ -201,7 +201,7 @@ def model_card(repo_id, audit, meta_extra=None):
     body.append('')
     body.append('Part of the [SZL Holdings](https://huggingface.co/SZLHOLDINGS) governed-AI estate: source-linked models, datasets and Spaces with receipted, checkable results.')
     body.append('')
-    body.append('%s %s' % (_badge('estate', 'SZLHOLDINGS', '%23030F29'),
+    body.append('🜂 %s %s' % (_badge('estate', 'SZLHOLDINGS', '%23030F29'),
                             _badge('kind', kind, '168f89')))
     body.append('')
     body.append('## Identity')
