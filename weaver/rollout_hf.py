@@ -16,6 +16,10 @@ import datetime
 
 from weaver import cards as cardbox
 from weaver import policy
+from weaver.source_guard import Hold as SourceGuardHold
+from weaver.source_guard import REPO_ID as HUB_REPO_ID
+from weaver.source_guard import SHA40 as HUB_SHA40
+from weaver.source_guard import check as source_preflight
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 Q = os.path.join(ROOT, 'queue.jsonl')
@@ -37,6 +41,11 @@ def _target_admitted(repo_id, kind):
     return os.environ.get("SZL_HF_CARD_APPROVED_TARGET", "").strip() == f"{kind}:{repo_id}"
 
 
+def _write_token():
+    # Pinned parent-CAS mode entry point. The credential source is the explicit
+    # owner-supplied environment credential only; never a workstation token file.
+    return _publisher_token()
+
 _COMMIT_OPENER = urllib.request.build_opener(
     urllib.request.ProxyHandler({}),
     cardbox._NoRedirect(),
@@ -53,7 +62,43 @@ def log(rec):
         f.write(json.dumps(rec, ensure_ascii=False) + chr(10))
 
 
-def ndjson_commit(repo_id, kind, files, *, approved=False):
+def _ndjson_commit_pinned(repo_id, kind, files, parent_commit):
+    # A portfolio/card writer never owns executable Space source files.
+    if kind == 'space':
+        raise SourceGuardHold('SPACE_CANONICAL_PUBLISHER_REQUIRED')
+    if kind not in ('model', 'dataset') or not isinstance(repo_id, str) or not HUB_REPO_ID.fullmatch(repo_id):
+        raise SourceGuardHold('HUB_REPOSITORY_IDENTITY_INVALID')
+    if not isinstance(parent_commit, str) or not HUB_SHA40.fullmatch(parent_commit):
+        raise SourceGuardHold('HUB_COMMIT_PARENT_UNAVAILABLE')
+    token = _write_token()
+    base_ep = 'https://huggingface.co/api/%s/%s/commit/main' % (
+        {'model': 'models', 'dataset': 'datasets', 'space': 'spaces'}[kind], repo_id)
+    nd = json.dumps({'key': 'header', 'value': {'summary': 'SZL estate showcase card (weaver v0.1.0, deterministic SVG charts)',
+                                                'description': 'Source: github.com/szl-holdings/estate-cards. Receipt-honest append/refresh.',
+                                                'parentCommit': parent_commit}})
+    for path, content in files:
+        nd += chr(10) + json.dumps({'key': 'file', 'value': {'path': path, 'content': content}},
+                                   ensure_ascii=False)
+    body = nd.encode('utf-8')
+    # A transport failure may follow a committed provider mutation. Do not
+    # retry a POST whose outcome cannot be independently reconciled.
+    try:
+        req = urllib.request.Request(base_ep, data=body, method='POST',
+                                     headers={'Authorization': 'Bearer ' + token,
+                                              'Content-Type': 'application/x-ndjson'})
+        with urllib.request.urlopen(req, timeout=180) as r:
+            return r.status, r.read().decode('utf-8')[:300]
+    except urllib.error.HTTPError as exc:
+        # Including 429: no verified no-commit readback exists here.
+        return exc.code, 'HTTP_PROVIDER_REFUSAL_NO_AUTOMATIC_RESEND'
+    except Exception:
+        return 0, 'PROVIDER_OUTCOME_UNKNOWN_NO_AUTOMATIC_RESEND'
+
+
+def ndjson_commit(repo_id, kind, files, parent_commit=None, *, approved=False):
+    # Pinned parent-CAS mode: no admission env, no retry, exact committed parent.
+    if parent_commit is not None:
+        return _ndjson_commit_pinned(repo_id, kind, files, parent_commit)
     # A Space README may be listed in SOURCE.json. Editing it outside the canonical
     # GitHub -> HF source publisher can make the running container fail at import.
     if kind == "space":
@@ -105,7 +150,9 @@ def load_state():
 
 
 def main(argv=None):
-    args = sys.argv[1:] if argv is None else list(argv)
+    # Direct-call default is the queue dry-run review; the CLI entry point
+    # passes sys.argv[1:] explicitly (see the __main__ block below).
+    args = list(argv) if argv is not None else []
     if not args:
         apply, approved_repo = False, None
     elif len(args) == 3 and args[:2] == ["--apply", "--repo"]:
@@ -146,7 +193,12 @@ def main(argv=None):
             log({'repo': repo, 'kind': kind, 'status': 'skipped_source_managed'})
             continue
         if kind == 'space':
-            log({'repo': repo, 'kind': kind, 'decision': 'SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED', 'ok': False})
+            # A Space has a canonical GitHub publisher; automated rollout holds.
+            # The receipt carries both estate vocabularies (card path and guard).
+            log({'repo': repo, 'kind': kind, 'ok': False,
+                 'decision': 'SOURCE_OWNED_SPACE_PUBLISHER_REQUIRED',
+                 'admission': 'HOLD',
+                 'reason': 'SPACE_CANONICAL_PUBLISHER_REQUIRED'})
             print('SKIP_SOURCE_OWNED_SPACE', repo, flush=True)
             continue
         if repo in done:
@@ -189,4 +241,4 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
