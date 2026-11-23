@@ -17,10 +17,12 @@ import urllib.error
 import urllib.request
 
 from weaver import charts, policy
+from weaver import source_guard
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CARD_MARK = '<!-- szl:showcase-card v1'
 README_LIMIT = 1_000_000
+README_MAX_BYTES = 512_000
 REPO_METADATA_LIMIT = 131_072
 PUBLIC_REPO = re.compile(r"SZLHOLDINGS/[A-Za-z0-9][A-Za-z0-9_.-]{0,115}")
 MODEL_META_KEYS = frozenset({"architecture", "parameters", "pipeline_tag", "source_revision"})
@@ -82,8 +84,48 @@ def _bounded_get(url, headers, allowed_types, limit):
         raise CardReadHold("CARD_READ_NOT_UTF8") from None
 
 
-def fetch_readme(repo_id, repo_type):
+def _fetch_readme_pinned(repo_id, repo_type, parent_revision):
+    """Read the immutable public README of a pinned Hub revision without auth."""
+    # Model repositories live at /<org>/<model>, unlike datasets and Spaces.
+    kinds = {'model': '', 'dataset': 'datasets/', 'space': 'spaces/'}
+    if (
+        repo_type not in kinds or not isinstance(repo_id, str)
+        or not source_guard.REPO_ID.fullmatch(repo_id)
+        or not isinstance(parent_revision, str)
+        or not source_guard.SHA40.fullmatch(parent_revision)
+    ):
+        raise source_guard.Hold('README_SOURCE_IDENTITY_INVALID')
+    url = 'https://huggingface.co/%s%s/raw/%s/README.md' % (
+        kinds[repo_type], repo_id, parent_revision
+    )
+    req = urllib.request.Request(url, headers={'User-Agent': 'SZL-card-public-readback/1'})
+    try:
+        with urllib.request.urlopen(req, timeout=12) as response:
+            if response.status != 200:
+                raise source_guard.Hold('README_HTTP_NOT_OK')
+            # A 200 HTML error page cannot become a new canonical README.
+            content_type = response.headers.get('Content-Type', '')
+            if not isinstance(content_type, str) or not content_type.lower().startswith('text/plain'):
+                raise source_guard.Hold('README_NON_TEXT')
+            raw = response.read(README_MAX_BYTES + 1)
+    except source_guard.Hold:
+        raise
+    except urllib.error.HTTPError:
+        raise source_guard.Hold('README_HTTP_UNAVAILABLE') from None
+    except Exception:
+        raise source_guard.Hold('README_TRANSPORT_UNAVAILABLE') from None
+    if not raw or len(raw) > README_MAX_BYTES:
+        raise source_guard.Hold('README_SIZE_INVALID')
+    try:
+        return raw.decode('utf-8', 'strict')
+    except UnicodeError:
+        raise source_guard.Hold('README_NOT_UTF8') from None
+
+
+def fetch_readme(repo_id, repo_type, *, parent_revision=None):
     """Return README text or an empty string after verifying repository identity."""
+    if parent_revision is not None:
+        return _fetch_readme_pinned(repo_id, repo_type, parent_revision)
     prefixes = {'model': '', 'dataset': 'datasets/'}
     if repo_type not in ('model', 'dataset') or type(repo_id) is not str or not PUBLIC_REPO.fullmatch(repo_id):
         raise CardReadHold("CARD_SOURCE_ID_INVALID")
