@@ -14,7 +14,10 @@ KINDS = {"model": "models", "dataset": "datasets", "space": "spaces"}
 REPO_ID = re.compile(r"SZLHOLDINGS/[A-Za-z0-9][A-Za-z0-9._-]{0,95}\Z")
 SHA40 = re.compile(r"[0-9a-f]{40}\Z")
 # Preserve source-owned Spaces even if an external writer deletes SOURCE.json.
-IMMUTABLE_TARGETS = frozenset({("space", "SZLHOLDINGS/khipu-proof-loom")})
+IMMUTABLE_TARGETS = frozenset({
+    ("space", "SZLHOLDINGS/khipu-proof-loom"),
+    ("space", "SZLHOLDINGS/szl-model-inference-lab"),
+})
 MAX_JSON = 262_144
 MAX_ROOT_ENTRIES = 1_000
 
@@ -80,4 +83,8 @@ def check(repo_id: str, kind: str, *, fetch=None) -> str:
         raise Hold("HUB_TREE_INVALID")
     if "SOURCE.json" in paths:
         raise Hold("SOURCE_MANIFEST_GOVERNS_README")
+    # release.json seals README.md by SHA-256 on model-inference Spaces.
+    # Even if SOURCE.json is absent, a card append would break startup.
+    if "release.json" in paths:
+        raise Hold("RELEASE_MANIFEST_GOVERNS_README")
     return parent
