@@ -1,0 +1,17 @@
+{
+  "stamp": "20261124T035456Z",
+  "method": "AIBOM field-presence scoring (license, datasets, limitations, safety_risk, environmental); presence accounting only",
+  "disclaimer": "scores are field-presence measurements, NOT model quality/safety/compliance/readiness judgments",
+  "cards_total": 4,
+  "cards_scored": 4,
+  "cards_unknown": 0,
+  "unknown_cards": [],
+  "field_presence_counts": {
+    "license": 1,
+    "datasets": 0,
+    "limitations": 0,
+    "safety_risk": 0,
+    "environmental": 0
+  },
+  "note": "offline run on estate-cards own card files"
+}
