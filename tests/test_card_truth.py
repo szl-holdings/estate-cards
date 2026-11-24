@@ -64,6 +64,29 @@ class CardTruthTest(unittest.TestCase):
         with self.assertRaises(cards.CardReadHold):
             cards.dataset_card("SZLHOLDINGS/example", AUDIT, "x\nunverified claim")
 
+    def test_same_slug_in_distinct_hub_namespaces(self):
+        repo_id = "SZLHOLDINGS/training-ledger-explorer"
+        for kind, prefix, label in (
+            ("space", "spaces/", "A Space in"),
+            ("dataset", "datasets/", "A dataset repository"),
+            ("model", "", "model namespace"),
+        ):
+            with self.subTest(kind=kind):
+                body, _, _ = cards.build_card(kind, repo_id, AUDIT, "")
+                self.assertIn("](https://huggingface.co/" + prefix + repo_id + ")", body)
+                self.assertIn(label, body)
+                if kind != "model":
+                    self.assertIn("repository mapping unavailable", body)
+                    self.assertNotIn("**Canonical source:**", body)
+                    self.assertNotIn('src="assets/szl-card/mesh-receipts.svg"', body)
+
+    def test_space_card_preserves_mapped_source_and_real_chart(self):
+        audit = dict(AUDIT, mesh={"files": ["train-2026.json"]})
+        body, assets = cards.space_card("SZLHOLDINGS/llm-router-live", audit)
+        self.assertIn("**Canonical source:** https://github.com/szl-holdings/szl-router", body)
+        self.assertIn("mesh-receipts.svg", assets)
+        self.assertIn('src="assets/szl-card/mesh-receipts.svg"', body)
+
     def test_curated_readme_is_appended_not_replaced(self):
         existing = "# Curated source\n" + "Historical details.\n" * 40
         body, _, mode = cards.build_card("space", "SZLHOLDINGS/example", AUDIT, existing)
