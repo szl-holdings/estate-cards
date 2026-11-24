@@ -41,6 +41,22 @@ class CardTruthTest(unittest.TestCase):
         self.assertNotIn("trained artifact in the governed factory", text)
         self.assertTrue(assets)
 
+    def test_model_card_distinguishes_unmapped_org_from_canonical_source(self):
+        unknown, _ = cards.model_card("SZLHOLDINGS/unmapped-model", AUDIT)
+        self.assertIn(
+            "- **GitHub organization:** https://github.com/szl-holdings (repository mapping unavailable)",
+            unknown.splitlines(),
+        )
+        self.assertNotIn("**Canonical source:**", unknown)
+        self.assertNotIn("https://github.com/szl-holdings (org)", unknown)
+
+        known, _ = cards.model_card("SZLHOLDINGS/szl-khipu", AUDIT)
+        self.assertIn(
+            "- **Canonical source:** [szl-khipu](https://github.com/szl-holdings/szl-khipu)",
+            known.splitlines(),
+        )
+        self.assertNotIn("repository mapping unavailable", known)
+
     def test_metadata_cannot_smuggle_training_or_html(self):
         for value in ({"trained": "YES"}, {"signature_verified": "true"},
                       {"architecture": "<script>alert(1)</script>"},

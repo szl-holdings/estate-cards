@@ -194,7 +194,7 @@ def evidence_charts(audit, repo_id):
 def model_card(repo_id, audit, meta_extra=None):
     charts_assets = evidence_charts(audit, repo_id)
     kind = 'model'
-    src = policy.source_for(repo_id)
+    src = policy.MAP.get(repo_id)
     name = repo_id.split('/')[-1]
     body = []
     body.append('# %s' % name.replace('-', ' '))
@@ -207,7 +207,10 @@ def model_card(repo_id, audit, meta_extra=None):
     body.append('## Identity')
     body.append('')
     body.append('- **Repo:** [%s](https://huggingface.co/%s)' % (repo_id, repo_id))
-    body.append('- **Canonical source:** [%s](%s)' % (src.split('/')[-1] if '/szl-holdings/' in src else 'szl-holdings org', src))
+    if src is None:
+        body.append('- **GitHub organization:** %s (repository mapping unavailable)' % policy.GH)
+    else:
+        body.append('- **Canonical source:** [%s](%s)' % (src.rsplit('/', 1)[-1], src))
     body.append('- **Kind:** model repository; weight and evaluation qualification NOT VERIFIED by this card')
     body.append('- **Repository kind:** model namespace (not independent training evidence)')
     body.append('- **Training / held-out evaluation:** UNKNOWN for this artifact; a namespace is not a checkpoint receipt.')
