@@ -239,34 +239,43 @@ def model_card(repo_id, audit, meta_extra=None):
     return '\n'.join(body), charts_assets
 
 
-def dataset_card(repo_id, audit, purpose=None):
+def _data_or_space_card(kind, repo_id, audit, purpose):
     charts_assets = evidence_charts(audit, repo_id)
-    src = policy.source_for(repo_id)
     name = repo_id.split('/')[-1]
-    body = []
-    body.append('# %s' % name.replace('-', ' '))
-    body.append('')
-    body.append('A dataset repository indexed in the [SZL Holdings](https://huggingface.co/SZLHOLDINGS) estate. '
-                'Organization charts are dated context, not independent dataset-lineage receipts.')
-    body.append('')
+    if kind == 'space':
+        namespace = 'spaces'
+        description = ('A Space in the [SZL Holdings](https://huggingface.co/SZLHOLDINGS) estate. '
+                       'Organization charts describe the estate at the time of the audit.')
+    else:
+        namespace = 'datasets'
+        description = ('A dataset repository indexed in the [SZL Holdings](https://huggingface.co/SZLHOLDINGS) estate. '
+                       'Organization charts are dated context, not independent dataset-lineage receipts.')
+    body = ['# %s' % name.replace('-', ' '), '', description, '']
     if purpose is not None:
         if type(purpose) is not str or len(purpose) > 512 or any(
             ord(ch) < 32 or ord(ch) == 127 for ch in purpose
         ):
-            raise CardReadHold("DATASET_PURPOSE_INVALID")
+            raise CardReadHold(kind.upper() + "_PURPOSE_INVALID")
         body.append('**Declared purpose (unverified):** ' + html.escape(purpose, quote=True))
         body.append('')
-    body.append('- **Repo:** [%s](https://huggingface.co/%s)' % (repo_id, repo_id))
-    body.append('- **Canonical source:** %s' % src)
+    body.append('- **Repo:** [%s](https://huggingface.co/%s/%s)' % (repo_id, namespace, repo_id))
+    if repo_id in policy.MAP:
+        body.append('- **Canonical source:** %s' % policy.source_for(repo_id))
+    else:
+        body.append('- **GitHub organization:** %s (repository mapping unavailable)' % policy.GH)
     body.append('')
-    if charts_assets:
-        body.append('<p><img src="assets/szl-card/mesh-receipts.svg" alt="Receipt families" width="720" /></p>')
+    if 'mesh-receipts.svg' in charts_assets:
+        body.append('<p><img src="assets/szl-card/mesh-receipts.svg" alt="Estate receipt families" width="720" /></p>')
         body.append('')
     return '\n'.join(body), charts_assets
 
 
+def dataset_card(repo_id, audit, purpose=None):
+    return _data_or_space_card('dataset', repo_id, audit, purpose)
+
+
 def space_card(repo_id, audit, purpose=None):
-    return dataset_card(repo_id, audit, purpose)
+    return _data_or_space_card('space', repo_id, audit, purpose)
 
 
 def build_card(kind, repo_id, audit, current_readme, purpose=None, meta_extra=None):
