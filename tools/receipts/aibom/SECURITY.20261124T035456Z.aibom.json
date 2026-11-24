@@ -1,0 +1,14 @@
+{
+  "stamp": "20261124T035456Z",
+  "method": "field-presence only; no quality interpretation",
+  "card": "SECURITY.md",
+  "status": "SCORED",
+  "fields_present": {
+    "license": false,
+    "datasets": false,
+    "limitations": false,
+    "safety_risk": false,
+    "environmental": false
+  },
+  "present_count": 0
+}
