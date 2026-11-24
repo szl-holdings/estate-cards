@@ -104,7 +104,12 @@ def donut(parts_, size=170, hole=0.62, title=None, legend=True):
     """parts_: [(label, value, color?)]"""
     w = size + (250 if legend else 0)
     h = max(size, 26 + 22 * len(parts_))
-    total = sum(v for _, v, *_ in parts_) or 1
+    if not parts_:
+        return _empty(w, h, title)
+    if any(not math.isfinite(v) or v < 0 for _, v, *_ in parts_):
+        raise ValueError("donut values must be finite and nonnegative")
+    total = sum(v for _, v, *_ in parts_)
+    single_sector = sum(v > 0 for _, v, *_ in parts_) == 1
     cx, cy, r = size / 2, h / 2, min(size, h) / 2 - 8
     out = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" role="img">' % (w, h, w, h)]
     if title:
@@ -115,9 +120,15 @@ def donut(parts_, size=170, hole=0.62, title=None, legend=True):
     for i, item in enumerate(parts_):
         label, value = item[0], item[1]
         col = item[2] if len(item) > 2 and item[2] else SERIES[i % len(SERIES)]
-        frac = max(value / total, 0.0)
-        if frac <= 0:
+        if value == 0:
             continue
+        if single_sector:
+            # An SVG arc whose endpoints coincide does not draw a full circle.
+            out.append('<circle cx="%.2f" cy="%.2f" r="%.2f" fill="none" '
+                       'stroke="%s" stroke-width="%.2f"/>' %
+                       (cx, cy, (r + inner) / 2, col, r - inner))
+            continue
+        frac = value / total
         a1 = a0 + frac * 360.0
         large = 1 if (a1 - a0) > 180 else 0
         x0, y0 = cx + r * math.cos(math.radians(a0)), cy + r * math.sin(math.radians(a0))
