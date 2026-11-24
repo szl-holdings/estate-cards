@@ -72,10 +72,12 @@ class CardTruthTest(unittest.TestCase):
             ("model", "", "model namespace"),
         ):
             with self.subTest(kind=kind):
-                body, _, _ = cards.build_card(kind, repo_id, AUDIT, "")
+                body, assets, _ = cards.build_card(kind, repo_id, AUDIT, "")
                 self.assertIn("](https://huggingface.co/" + prefix + repo_id + ")", body)
                 self.assertIn(label, body)
                 if kind != "model":
+                    self.assertIn("org-context.svg", assets)
+                    self.assertNotIn("mesh-receipts.svg", assets)
                     self.assertIn("repository mapping unavailable", body)
                     self.assertNotIn("**Canonical source:**", body)
                     self.assertNotIn('src="assets/szl-card/mesh-receipts.svg"', body)
