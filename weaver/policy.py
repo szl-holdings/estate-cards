@@ -23,7 +23,7 @@ MAP = {
     "SZLHOLDINGS/szl-command-lab": GH + "/szl-command-lab",
     "SZLHOLDINGS/counsel": GH + "/counsel",
     "SZLHOLDINGS/finance": GH + "/finance",
-    "SZLHOLDINGS/terra": GH + "/terra",
+    "SZLHOLDINGS/terra": GH + "/szl-real-estate",
     "SZLHOLDINGS/sentra": GH + "/sentra",
     "SZLHOLDINGS/khipu-scholar-4b-v1-checkpoints": GH + "/szl-khipu-scholar",
 }
