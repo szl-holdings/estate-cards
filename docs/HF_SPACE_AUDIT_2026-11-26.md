@@ -13,41 +13,18 @@ The audit measured 80 Spaces.
 - 69 Spaces mixed Python with web assets or JavaScript.
 - 20 Spaces had no Python files.
 - 68 READMEs mentioned Python, 58 mentioned a backend, 56 mentioned a frontend, and 75 mentioned consolidation. These README signals are advisory.
-- The live endpoint pass probed the first READY domain for every Space. It observed 60 root responses at HTTP 200, 51 `/healthz` responses at HTTP 200, and 28 `/readyz` responses at HTTP 200.
+- The live endpoint pass preferred each Space's non-static READY domain. It observed 73 root responses at HTTP 200 and 52 `/healthz` responses at HTTP 200. Three Spaces had no READY domain.
 
-The live pass recorded 29 Spaces with a root or health check failure or timeout. The affected IDs are
+The corrected live pass found four genuine root failures on the preferred non-static domains. Static alias hosts that returned 404 were excluded from this failure count. The affected IDs are
 
 ```text
-SZLHOLDINGS/README
 SZLHOLDINGS/anatomy
-SZLHOLDINGS/david-leads
-SZLHOLDINGS/foundation-confirmation-v2
-SZLHOLDINGS/frontier-console
-SZLHOLDINGS/governed-receipt-verifier
 SZLHOLDINGS/immune
 SZLHOLDINGS/immune-lattice
-SZLHOLDINGS/khipu-hologram
-SZLHOLDINGS/khipu-playground
-SZLHOLDINGS/khipu-yachay
-SZLHOLDINGS/prove-it
-SZLHOLDINGS/szl-bench-suite
-SZLHOLDINGS/szl-brand-campaign
-SZLHOLDINGS/szl-command-center
 SZLHOLDINGS/szl-constellation-staging
-SZLHOLDINGS/szl-cram-demo
-SZLHOLDINGS/szl-energy-ledger
-SZLHOLDINGS/szl-forge-lab
-SZLHOLDINGS/szl-frontier-deck
-SZLHOLDINGS/szl-marketing
-SZLHOLDINGS/szl-provenance-pitch
-SZLHOLDINGS/szl-receipt-constellation
-SZLHOLDINGS/szl-receipts-chain
-SZLHOLDINGS/szl-safe-stack
-SZLHOLDINGS/szl-second-brain
-SZLHOLDINGS/szlholdings-si
-SZLHOLDINGS/training-ledger-explorer
-SZLHOLDINGS/wink-observatory
 ```
+
+`SZLHOLDINGS/david-leads` served its root but timed out on `/healthz`. Several static nginx-style Spaces served their root while lacking `/healthz`, which is expected for that deployment shape and remains outside the strict Python service contract.
 
 The two sleeping runtimes are `SZLHOLDINGS/immune-lattice` and `SZLHOLDINGS/szl-chief-engineer`. The three Spaces without a READY domain are `README`, `szl-brand-campaign`, and `szl-safe-stack`. `SZLHOLDINGS/szl-receipt-constellation` has no GitHub source URL.
 
