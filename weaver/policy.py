@@ -39,6 +39,8 @@ SPACE_RUNTIME_OWNER = {
     "SZLHOLDINGS/frontier-showcase": GH,
     "SZLHOLDINGS/measured-honesty-census": GH,
     "SZLHOLDINGS/szl-energy-hologram": GH,
+    # README source-of-truth is wave-logs; szl-receipt is the exact org receipt implementation.
+    "SZLHOLDINGS/szl-receipt-constellation": GH + "/szl-receipt",
 }
 SPACE_GENERATOR = {
     "SZLHOLDINGS/frontier-showcase": GH + "/estate-cards",
