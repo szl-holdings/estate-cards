@@ -32,6 +32,29 @@ def source_for(repo_id):
     return MAP.get(repo_id, GH + " (org)")
 
 
+# The Space READMEs declare the GitHub organization as canonical source and the
+# estate-cards repository as the deterministic card generator. Keep those roles
+# separate so a generated artifact is never mistaken for a runtime checkout.
+SPACE_RUNTIME_OWNER = {
+    "SZLHOLDINGS/frontier-showcase": GH,
+    "SZLHOLDINGS/measured-honesty-census": GH,
+    "SZLHOLDINGS/szl-energy-hologram": GH,
+}
+SPACE_GENERATOR = {
+    "SZLHOLDINGS/frontier-showcase": GH + "/estate-cards",
+    "SZLHOLDINGS/measured-honesty-census": GH + "/estate-cards",
+    "SZLHOLDINGS/szl-energy-hologram": GH + "/estate-cards",
+}
+
+
+def runtime_owner_for(space_id):
+    return SPACE_RUNTIME_OWNER.get(space_id)
+
+
+def generator_for(space_id):
+    return SPACE_GENERATOR.get(space_id)
+
+
 # Canonical deployments publish the exact source tree through their own writer.
 SOURCE_MANAGED = {("space", "szlholdings/llm-router-live")}
 
